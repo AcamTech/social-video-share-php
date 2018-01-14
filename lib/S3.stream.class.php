@@ -18,7 +18,8 @@ require_once('vendor/autoload.php');
 
 use Aws\S3\S3Client;
 use Aws\S3\Exception\S3Exception;
-use GuzzleHttp\Client as HttpClient;
+use GuzzleHttp;
+use Exception;
 
 class S3Stream
 {
@@ -36,7 +37,7 @@ class S3Stream
   /**
    * @var object
    */
-  private $s3Client;
+  public $s3Client;
 
   /**
    * @var resource Stream File pointer
@@ -44,7 +45,7 @@ class S3Stream
   private $stream;
 
   /**
-   * Create a new ZipStream object.
+   * Create a new S3 Stream object with AWS S3 Credentials
    *
    * @param Array $config - AWS config parameters
    *    [
@@ -140,10 +141,25 @@ class S3Stream
   }
 
   /**
+   * Get a URL to the file
+   *
+   * @param String $bucket - Name of bucket
+   * @param String $filename  - Name for the file
+   * 
+  */
+  public function getUrl(string $bucket, string $filename, $expiration = '+10 minutes') {
+    $request = $this->getRequest($bucket, $filename, $expiration);
+    $signedUrl = $request->getUri()->__toString();
+    return $signedUrl;
+  }
+
+  /**
    * Get a Guzzle Request for the file
    *
    * @param String $bucket - Name of bucket
    * @param String $filename  - Name for the file
+   * 
+   * @return GuzzleHttp\PSR-7\Request Request
    * 
   */
   public function getRequest(string $bucket, string $filename, $expiration = '+10 minutes') {
@@ -158,16 +174,36 @@ class S3Stream
   }
 
   /**
-   * Get a URL to the file
+   * Get the HTTP Headers of a file. 
+   * The body of the file is not downloaded. Just the headers.
    *
    * @param String $bucket - Name of bucket
    * @param String $filename  - Name for the file
    * 
   */
-  public function getUrl(string $bucket, string $filename, $expiration = '+10 minutes') {
-    $request = $this->getRequest($bucket, $filename, $expiration);
-    $signedUrl = $request->getUri()->__toString();
-    return $signedUrl;
+  public function getHeaders(string $bucket, string $filename) {
+    // returns a PSR-7 HTTP GET Request
+    // we clone to a PSR-7 HTTP HEAD Request
+    $request = $this->getRequest($bucket, $filename);
+    $headers = [];
+    $client = new GuzzleHttp\Client();
+    // We need to make a HTTP GET request then abort it 
+    // because S3 private files do not support HEADER requests 
+    try {
+      $client->request(
+        'GET',
+        $request->getUri(),
+        [
+          'on_headers' => function (GuzzleHttp\Psr7\Response $response) use (&$headers, $client) {
+            $headers = $response->getHeaders();
+            throw new Exception('Closing connection.');
+          },
+          'stream' => true
+        ]
+      );
+    } catch(Exception $e) { /* ignore */ }
+    
+    return $headers;
   }
 
   /**
@@ -178,4 +214,4 @@ class S3Stream
   }
 }
 
-class InvalidParamException extends \Exception {}
+class InvalidParamException extends Exception {}

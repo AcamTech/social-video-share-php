@@ -1,4 +1,9 @@
 <?php
+/**
+ * Upload and Share video to google+ from S3
+ * Note: Not possible because Google+ API is read-only
+ * Note: Maybe possible on Google+ Domains API but not applicable to current project
+ */
 
 require_once('lib/google.auth.php');
 require_once('lib/S3.stream.class.php');
@@ -19,9 +24,7 @@ $google_params = [
 	"client_secret" => "Qlavzeo3LyF98fnQeVXBnStE",
 	"redirect_uri" => $siteBaseUri . 'googleplus.share.php',
     "scope" => [
-        'https://www.googleapis.com/auth/plus.me',
-        'https://www.googleapis.com/auth/plus.media.upload',
-        'https://www.googleapis.com/auth/plus.stream.write'
+        'https://www.googleapis.com/auth/youtube.force-ssl'
     ]
 
 ];

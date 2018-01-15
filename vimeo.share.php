@@ -3,65 +3,23 @@
  * Upload and Share video to vimeo from S3
  */
 
-require_once('lib/vimeo.auth.php');
+require_once('vendor/autoload.php');
+require_once('lib/Session.class.php');
+require_once('lib/Request.class.php');
 require_once('lib/S3.stream.class.php');
 
 use TorCDN\S3Stream;
 use TorCDN\VimeoAuth;
+use Vimeo\Vimeo;
 use TorCDN\HttpServerIncomingClientRequest;
+use TorCDN\Session;
 
 $Request = new HttpServerIncomingClientRequest();
-
-// dev access token
-$accessToken = '6b703223e5ce676e5547e8a6fd51f055';
+$Session = new Session();
 
 // config data
 $siteBaseUri = 'http://localhost/codementor/latakoo/social-video-share/';
-// google client
-$google_params = [
-	"app_name" => "Latakoo",
-	"response_type" => "code",
-	"client_id" => "850095945888-2hges0en1jud5genpgt01hfnq3b6ord5.apps.googleusercontent.com",
-	"client_secret" => "Qlavzeo3LyF98fnQeVXBnStE",
-	"redirect_uri" => $siteBaseUri . 'googleplus.share.php',
-    "scope" => [
-        'https://www.googleapis.com/auth/plus.me',
-        'https://www.googleapis.com/auth/plus.media.upload',
-        'https://www.googleapis.com/auth/plus.stream.write'
-    ]
-
-];
-
-$Client = new Google_Client();
-$GoogleAuth = new GoogleAuth($google_params, $Client);
-$GooglePlus = new Google_Service_Plus($Client);
-$GooglePlusDomains = new Google_Service_PlusDomains($Client);
-
-// debugging
-if ($Request->get('logout')) {
-    $GoogleAuth->logout();
-    die(header('Location: googleplus.share.php'));
-}
-
-$access_token = $GoogleAuth->getAccessToken();
-$authUrl = $GoogleAuth->createAuthUrl();
-
-?>
-
-<?php if ($access_token) { ?>
-	<p><span>Access Token:</span> <?php echo $access_token['access_token']; ?></p>
-    <form>
-        <button name="share" value="1">Share</button>
-    </form>
-<?php } else { ?>
-	<a href="<?php echo $authUrl; ?>">Connect</a>
-<?php } ?>
-
-<?php 
-
-$share = $Request->get('share');
-
-// s3
+// S3 
 $s3_config = [
     'region' => 'ap-southeast-1',
     'credentials' => [
@@ -71,31 +29,67 @@ $s3_config = [
 ];
 $filename = 'videos/TextInMotion-Sample-576p.mp4';
 $bucket = 'torcdn-singapore';
+// Vimeo
+$client_id = '4bb96180119c6d1e212922708c2de9f7fac761d6';
+$client_secret = 'IiYRQQzf78mnUkXtvb50SnZs/ema7J/HIVNekpu+4mSZpAmojkif0zW9A+g4rrHBCpduTpdCbaXngIMBRCiqcI/3hBYmXZHVdo8Ro67SWIFGx9xBdsuRd4LuN/wsVx8A';
+$scopes = ['create', 'upload']; // https://developer.vimeo.com/api/authentication#supported-scopes
+$redirect_uri = $siteBaseUri . 'vimeo.share.php';
 
 $S3Stream = new S3Stream($s3_config);
+$Vimeo = new Vimeo($client_id, $client_secret);
 
-// Google+
-$userId = 'me';
-$collection = 'cloud'; // public
+$token = $Session->get('vimeoToken');
+$token = [
+    'body' => [ 'access_token' => '6b703223e5ce676e5547e8a6fd51f055' ]
+];
+if (!$token) {
+    $state = generateRandomSecureToken();
+    $Session->set('vimeoState', $state);
+    $authUrl = $Vimeo->buildAuthorizationEndpoint($redirect_uri, $scopes, $state);
+    //header('Location: ' . $authUrl);
+    die('<a href="' . $authUrl . '">Login to Vimeo</a>');
+}
 
-echo '<pre>'; // debug
-
-// if we have a token
-if ($share) {
-    if ($access_token) {
-        $url = $S3Stream->getUrl($bucket, $filename);
-
-        $postBody = new Google_Service_PlusDomains_Media();
-        $postBody->setDisplayName('video.mp4');
-        $stream = new Google_Service_PlusDomains_Videostream();
-        $stream->setUrl($url);
-        //$postBody->setStreams($stream);
-        $postBody->setUrl($url);
-        $GooglePlusDomains->media->insert($userId, $collection, $postBody);
-
-        echo 'Wrote ' . $len . ' bytes to video.mp4';
-    } else {
-        echo '<h3>Please login before sharing.</h3>';
+if ($code = $Request->get('code')) {
+    $state = $Request->get('state');
+    $oldState = $Session->get('vimeoState');
+    $Session->set('vimeoState', null);
+    if ($state != $oldState) {
+        throw new \Exception('Invalid access token state received.');
     }
-    
+    $token = $Vimeo->accessToken($code, $redirect_uri);
+}
+
+if (!$token) {
+    throw new \Exception('Could not get access token.');
+}
+
+// we are authenticated
+$accessToken = $token['body']['access_token'];
+$accessToken = '6b703223e5ce676e5547e8a6fd51f055'; // TODO: remove, dev only
+$Vimeo->setToken($accessToken);
+
+if ($Request->get('share')) {
+    $videoUrl = $S3Stream->getUrl($bucket, $filename);
+    $resp = $Vimeo->request('/me/videos', array('type' => 'pull', 'link' => $videoUrl), 'POST');
+
+    echo '<pre>'; // debug
+    var_dump($resp);
+} else {
+    echo 'Token: <pre>' . $accessToken . '</pre>';
+    echo '<a href="?share=1">Share</a>';
+}
+
+function generateRandomSecureToken($length = 40) {
+    $chars = [];
+    $codeAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    $codeAlphabet.= "abcdefghijklmnopqrstuvwxyz";
+    $codeAlphabet.= "0123456789";
+    $max = strlen($codeAlphabet);
+
+   for ($i=0; $i < $length; $i++) {
+       $chars[] = $codeAlphabet[random_int(0, $max-1)];
+   }
+
+   return implode('', $chars);
 }

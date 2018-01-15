@@ -1,6 +1,6 @@
 <?php
 /**
- * Upload and Share video to vimeo from S3
+ * Upload video from Amazon S3 to Youtube
  */
 
 require_once('lib/google.auth.php');
@@ -14,9 +14,6 @@ use TorCDN\YoutubeVideoUpload;
 
 $Request = new HttpServerIncomingClientRequest();
 
-// dev access token
-$accessToken = '6b703223e5ce676e5547e8a6fd51f055';
-
 // config data
 $siteBaseUri = 'http://localhost/codementor/latakoo/social-video-share/';
 // google client
@@ -25,18 +22,11 @@ $google_params = [
 	"response_type" => "code",
 	"client_id" => "850095945888-2hges0en1jud5genpgt01hfnq3b6ord5.apps.googleusercontent.com",
 	"client_secret" => "Qlavzeo3LyF98fnQeVXBnStE",
-	"redirect_uri" => $siteBaseUri . 'googleplus.share.php',
+	"redirect_uri" => $siteBaseUri . 'google.auth.php',
     "scope" => [
         'https://www.googleapis.com/auth/youtube.force-ssl'
     ]
-
 ];
-
-$Client = new Google_Client();
-$GoogleAuth = new GoogleAuth($google_params, $Client);
-$GooglePlus = new Google_Service_Plus($Client);
-$GooglePlusDomains = new Google_Service_PlusDomains($Client);
-
 // s3
 $s3_config = [
     'region' => 'ap-southeast-1',
@@ -48,14 +38,10 @@ $s3_config = [
 $filename = 'videos/TextInMotion-Sample-576p.mp4';
 $bucket = 'torcdn-singapore';
 
+$Client = new Google_Client();
+$GoogleAuth = new GoogleAuth($google_params, $Client);
 $S3Stream = new S3Stream($s3_config);
 $YoutubeVideoUpload = new YoutubeVideoUpload($Client);
-
-// debugging
-if ($Request->get('logout')) {
-    $GoogleAuth->logout();
-    die(header('Location: googleplus.share.php'));
-}
 
 $access_token = $GoogleAuth->getAccessToken();
 $authUrl = $GoogleAuth->createAuthUrl();
@@ -74,10 +60,6 @@ $authUrl = $GoogleAuth->createAuthUrl();
 <?php 
 
 $share = $Request->get('share');
-
-echo '<pre>'; // debug
-
-// if we have a token
 if ($share) {
     if ($access_token) {
 
@@ -85,17 +67,13 @@ if ($share) {
         $headers = $S3Stream->getHeaders($bucket, $filename);
         $length = isset($headers['Content-Length']) ? (int) $headers['Content-Length'][0] : null;
 
-        echo "Content-Length: ";
-        var_dump($length);
-
-
         // tests
         //$url = './video/SampleVideo_720x480_1mb.mp4';
         //$url = '../SampleVideo_1280x720_2mb.mp4';
 
         // max script execution time (15 mins)
         ini_set('max_execution_time', 60 * 2);
-        $YoutubeVideoUpload->setTimeLimit(60 * 2);
+        $YoutubeVideoUpload->setTimeLimit(60 * 2);    
         
         // category https://developers.google.com/youtube/v3/docs/videoCategories/list
         $YoutubeVideoUpload->uploadVideoFile(
@@ -120,4 +98,3 @@ if ($share) {
     }
     
 }
-

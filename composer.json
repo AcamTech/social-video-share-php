@@ -1,6 +1,7 @@
 {
     "require": {
         "google/apiclient": "2.0",
-        "aws/aws-sdk-php": "3.*"
+        "aws/aws-sdk-php": "3.*",
+        "vimeo/vimeo-api": "^1.3"
     }
 }

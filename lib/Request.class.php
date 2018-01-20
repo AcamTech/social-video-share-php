@@ -35,6 +35,15 @@ class HttpServerIncomingClientRequest {
 	}
 
 	/**
+	 * Was the request parameter sent in GET or POST
+	 * @param String $name
+	 * @return boolean
+	 */
+	public function isset($name) {
+		return isset($_REQUEST[$name]);
+	}
+
+	/**
 	 * Retrieve a POST value
 	 * @param {String} Namespace
 	 * @param {Mixed} Default value to return if namespace is not set

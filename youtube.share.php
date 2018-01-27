@@ -3,26 +3,25 @@
  * Upload video from Amazon S3 to Youtube
  */
 
-require_once('src/SocialVideoShare/GoogleAuth.php');
-require_once('src/SocialVideoShare/S3Stream.php');
-require_once('src/SocialVideoShare/YoutubeVideoUpload.php');
+require_once __DIR__ . '/vendor/autoload.php';
 
 use TorCDN\SocialVideoShare\S3Stream;
 use TorCDN\SocialVideoShare\GoogleAuth;
 use TorCDN\SocialVideoShare\YoutubeVideoUpload;
 use TorCDN\Server\Request;
+use TorCDN\Server\Session;
 
 $Request = new Request();
 
 // config data
-$siteBaseUri = 'http://localhost/codementor/latakoo/social-video-share/';
+$siteBaseUri = 'http://localhost/';
 // google client
 $google_params = [
 	"app_name" => "Latakoo",
 	"response_type" => "code",
 	"client_id" => "850095945888-2hges0en1jud5genpgt01hfnq3b6ord5.apps.googleusercontent.com",
 	"client_secret" => "Qlavzeo3LyF98fnQeVXBnStE",
-	"redirect_uri" => $siteBaseUri . 'google.auth.php',
+	"redirect_uri" => $siteBaseUri . 'RestApi.php/google/auth',
     "scope" => [
         'https://www.googleapis.com/auth/youtube.force-ssl'
     ]
@@ -39,7 +38,8 @@ $filename = 'videos/TextInMotion-Sample-576p.mp4';
 $bucket = 'torcdn-singapore';
 
 $Client = new Google_Client();
-$GoogleAuth = new GoogleAuth($google_params, $Client);
+$Session = new Session('google');
+$GoogleAuth = new GoogleAuth($google_params, $Client, $Session);
 $S3Stream = new S3Stream($s3_config);
 $YoutubeVideoUpload = new YoutubeVideoUpload($Client);
 

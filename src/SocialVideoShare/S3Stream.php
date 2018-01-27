@@ -43,6 +43,11 @@ class S3Stream
   private $stream;
 
   /**
+   * @var callable Logger
+   */
+  private $logger;
+
+  /**
    * Create a new S3 Stream object with AWS S3 Credentials
    *
    * @param Array $config - AWS config parameters
@@ -79,6 +84,8 @@ class S3Stream
     $this->s3Client = S3Client::factory($this->config);
 
     $this->s3Client->registerStreamWrapper();
+
+    $this->setLogger(function() {});
   }
 
   /**
@@ -88,6 +95,14 @@ class S3Stream
     if (is_resource($this->stream)) {
         $this->close();
     }
+  }
+
+  /**
+   * Set the Logger function
+   * @param callable $logger
+   */
+  public function setLogger(callable $logger) {
+    $this->logger = $logger;
   }
 
   /**
@@ -198,19 +213,43 @@ class S3Stream
     $client = new GuzzleHttp\Client();
     // We need to make a HTTP GET request then abort it 
     // because S3 private files do not support HEADER requests 
+    $exception = new Exception('No exception thrown by HTTP request');
+    $response = null;
     try {
-      $client->request(
+      $response = $client->request(
         'GET',
         $url,
         [
           'on_headers' => function (GuzzleHttp\Psr7\Response $response) use (&$headers, $client) {
             $headers = $response->getHeaders();
-            throw new Exception('Closing connection.');
+            throw $exception = new GetUrlHeadersException('Closing connection because we have headers.');
           },
-          'stream' => true
+          'stream' => true,
+          'timeout' => 1, /* sometime on_headers is not triggered */
+          'progress' => function(
+              $downloadTotal,
+              $downloadedBytes,
+              $uploadTotal,
+              $uploadedBytes
+            ) {
+              if ($downloadedBytes > 1000 * 1000) {
+                throw $exception = new GetUrlHeadersException('Closing connection because 1Mb already downloaded');
+              }
+            }
         ]
       );
-    } catch(Exception $e) { /* ignore */ }
+
+      if (!$headers) {
+        $headers = $response->getHeaders();
+      }
+
+    } catch(Exception $e) {
+      if (!($exception instanceof GetUrlHeadersException)) {
+        $exception = $e;
+      }
+    }
+
+    $this->log('getUrlHeaders Exception', $exception->getMessage(), $headers, $response);
     
     return $headers;
   }
@@ -221,6 +260,14 @@ class S3Stream
   public function close() {
     fclose($this->stream);
   }
+
+  /**
+   * Logging Utility
+   */
+  protected function log() {
+    call_user_func_array($this->logger, func_get_args());
+  }
 }
 
 class InvalidParamException extends Exception {}
+class GetUrlHeadersException extends Exception {}

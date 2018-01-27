@@ -11,7 +11,8 @@ use Symfony\Component\HttpFoundation\Session\Session;
 /**
  * Extends Silex\Application with a Restful interface
  */
-class RestApi extends Application {
+class RestApi extends Application
+{
 
   //use Silex\Application\MonologTrait;
 
@@ -25,7 +26,8 @@ class RestApi extends Application {
    *    debug.requests: true|false
    *  ]
    */
-  public function __construct(array $config = []) {
+  public function __construct(array $config = [])
+  {
     parent::__construct();
 
     $this['config'] = $config;

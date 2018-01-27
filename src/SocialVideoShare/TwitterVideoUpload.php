@@ -214,7 +214,7 @@ class TwitterVideoUpload {
 
             // fread non local files returns as soon as a packet is available
             // usually 8192 bytes. http://php.net/manual/en/function.fread.php
-            // buffer packets to 1Mb then upload
+            // buffer packets to $chunkSizeBytes then upload
             $packet = fread($stream, $chunkSizeBytes); 
 
             $chunk .= $packet;

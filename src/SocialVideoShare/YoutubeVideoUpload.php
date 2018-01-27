@@ -13,9 +13,21 @@ use Google_Client;
 use Google_Service_YouTube;
 use Google_Service_YouTube_Video;
 use Google_Http_MediaFileUpload;
+use Psr\Log\LoggerInterface;
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
 
 class YoutubeVideoUpload
 {
+    /**
+     * @var callable Callback to handle progress of uploaded bytes
+     */
+    protected $progressHandler;
+
+    /**
+     * @var Psr\Log\LoggerInterface Logger instance
+     */
+    protected $logger;
 
     /**
      * Construct with Google Client and Youtube Service
@@ -28,10 +40,37 @@ class YoutubeVideoUpload
         $this->service = $service ? $service : new Google_Service_YouTube($client);
         $this->setMimeType('video/*');
         $this->setChunkSizeBytes(1 * 1024 * 1024); // 1Mb. Min is 262144 bytes
+
+        $logger = new Logger(__CLASS__);
+        //$logger->pushHandler(new StreamHandler('YoutubeVideoUpload.log', Logger::DEBUG));
+        $this->setLogger($logger);
+        $this->setProgresshandler(function($progress) use ($logger) {
+            $logger->debug('Progress: ' . json_encode($progress));
+        });
     }
 
+    /**
+     * Set the script execution time limit
+     * @param Int $timeoutSecs
+     */
     public function setTimeLimit(Int $timeoutSecs) {
         ini_set('max_execution_time', $timeoutSecs);
+    }
+
+    /**
+     * Set the debug logger
+     * @param Psr\Log\LoggerInterface $logger
+     */
+    public function setLogger(LoggerInterface $logger) {
+        $this->logger = $logger;
+    }
+
+    /**
+     * Set the progress callback handler
+     * @param callable $progressHandler
+     */
+    public function setProgresshandler(callable $progressHandler) {
+        $this->progressHandler = $progressHandler;
     }
 
     /**
@@ -85,12 +124,21 @@ class YoutubeVideoUpload
         if (!$length) {
             try {
                 $length = filesize($file_path);
-            } catch(Exception $e) { /* ignore for urls */ }
+            } catch(Exception $e) {
+                throw new Exception('Could not get file content length.');
+            }
         }
         return $this->uploadVideoStream($stream, $properties, $part, $params, $length);
     }
     
-    // TODO: get filesize from stream? 
+    /**
+     * Performs the upload to Youtube in chunks
+     * @param Object $request Videos.Insert Request
+     * @param Resource $stream
+     * @param Int $length
+     * @param String $mimeType
+     * @return Mixed Status
+     */
     private function uploadMedia($request, $stream, $length = null, $mimeType = 'video/*')
     {
         if (!$length) {
@@ -100,7 +148,7 @@ class YoutubeVideoUpload
         // Create a MediaFileUpload object for resumable uploads.
         // Parameters to MediaFileUpload are:
         // this->client, request, mimeType, data, resumable, chunksize.
-        $media = new Google_Http_MediaFileUpload(
+        $this->media = new Google_Http_MediaFileUpload(
             $this->client,
             $request,
             $mimeType,
@@ -109,30 +157,60 @@ class YoutubeVideoUpload
             $this->chunkSizeBytes
         );
 
-        $media->setFileSize($length);
+        $this->media->setFileSize($length);
 
-        var_dump(['chunksize' => $this->chunkSizeBytes, 'content-length' => $length]);
+        $this->logger->debug(
+            'Uploading file: ' . json_encode(['chunksize' => $this->chunkSizeBytes, 'length' => $length])
+        );
 
         // Read the media file and upload it chunk by chunk.
         $status = false;
-        $chunk = '';
+        $this->chunkCount = 0;
+        $this->totalSize = 0;
+        $buffer = '';
+
         while (!$status && !feof($stream)) {
-            $chunk .= fread($stream, $this->chunkSizeBytes);
-            $len = strlen($chunk);
 
-            if ($len < 262144 || $len < $this->chunkSizeBytes) {
-                continue; // 262144 is min chunk size or upload fails
+            // fread non local files returns as soon as a packet is available
+            // usually 8192 bytes. http://php.net/manual/en/function.fread.php
+            // buffer packets to $this->chunkSizeBytes then upload
+            $packet = fread($stream, $this->chunkSizeBytes);
+            $buffer .= $packet;
+
+            if (feof($stream) || strlen($buffer) >= $this->chunkSizeBytes) {
+
+                while (strlen($buffer) >= $this->chunkSizeBytes) {
+                    $chunk = substr($buffer, 0, $this->chunkSizeBytes);
+                    $buffer = substr($buffer, $this->chunkSizeBytes);
+                    $status = $this->uploadChunk($chunk);
+                }
+                
+                if (feof($stream) && strlen($buffer)) {
+                    $status = $this->uploadChunk($buffer);
+                    $buffer = '';
+                }
+
             }
-            echo 'Read from upload file stream bytes: ' . strlen($chunk) . "\n";
-            $status = $media->nextChunk($chunk);
-            $chunk = '';
-        }
-
-        if (strlen($chunk) > 0) {
-            $media->nextChunk($chunk); // last chunk size can be less than 262144
         }
 
         fclose($stream);
+        return $status;
+    }
+
+    protected function uploadChunk($chunk)
+    {
+        $chunkSize = strlen($chunk);
+        $this->totalSize += $chunkSize;
+        $this->chunkCount++;
+
+        $this->progress([
+            'chunkSize' => $chunkSize,
+            'chunkCount' => $this->chunkCount,
+            'totalSize' => $this->totalSize
+        ]);
+
+        $status = $this->media->nextChunk($chunk);
+
         return $status;
     }
 
@@ -159,6 +237,15 @@ class YoutubeVideoUpload
     public function setMimeType($mimeType)
     {
         $this->mimeType = $mimeType;
+    }
+
+    /**
+     * Update progressHandler function with upload progress
+     * @param Array $progress [ chunk: {size}, total: {size} ]
+     */
+    protected function progress($progress)
+    {
+        return call_user_func($this->progressHandler, $progress);
     }
 
 }

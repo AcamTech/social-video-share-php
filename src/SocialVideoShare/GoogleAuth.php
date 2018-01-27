@@ -1,29 +1,29 @@
 <?php
 
-namespace TorCDN;
+namespace TorCDN\SocialVideoShare;
 
-require_once('vendor/autoload.php');
-require_once('config.php');
-require_once('Session.class.php');
-require_once('Request.class.php');
-
-use TorCDN\HttpServerIncomingClientRequest as Request;
-use TorCDN\Session;
+use TorCDN\Server\Request;
+use TorCDN\Server\Session;
 use Google_Client;
 
 class GoogleAuth {
+
+	/**
+	 * @var Google_Client
+	 */
+	protected $client;
 
 	/**
 	 * Create google client
 	 * @param $params {client_id, client_secret, redirect_uri, [scope]}
 	 */
 	public function __construct($params, $client = null, $Session = null, $Request = null) {
-		$this->Session = new Session();
-		$this->Request = new Request();
+		$this->Session = $Session ?: new Session();
+		$this->Request = $Request ?: new Request();
 
 		// google api client
-		$client = $client ? $client : new Google_Client();
-		//$client->setApplicationName($google_app_name);
+		$client = $client ?: new Google_Client();
+		$client->setApplicationName($params['app_name']);
 		$client->setClientId($params['client_id']);
 		$client->setClientSecret($params['client_secret']);
 		$client->setRedirectUri($params['redirect_uri']);
@@ -35,8 +35,12 @@ class GoogleAuth {
 
 	/**
 	 * Return the google Auth URL that you can redirect to or create a link for
+	 * @param String $redirectUri
 	 */
-	public function createAuthUrl() {
+	public function createAuthUrl($redirectUri = null) {
+		if ($redirectUri) {
+			$this->client->setRedirectUri($redirectUri);
+		}
 		return $this->client->createAuthUrl();
 	}
 

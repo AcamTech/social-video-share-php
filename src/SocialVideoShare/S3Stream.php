@@ -12,9 +12,7 @@
  *
  * Example usage can be found in the examples folder.
  */
-namespace TorCDN;
-
-require_once('vendor/autoload.php');
+namespace TorCDN\SocialVideoShare;
 
 use Aws\S3\S3Client;
 use Aws\S3\Exception\S3Exception;
@@ -182,9 +180,20 @@ class S3Stream
    * 
   */
   public function getHeaders(string $bucket, string $filename) {
-    // returns a PSR-7 HTTP GET Request
-    // we clone to a PSR-7 HTTP HEAD Request
-    $request = $this->getRequest($bucket, $filename);
+    $request = $this->getRequest($bucket, $filename); // PSR-7 HTTP GET Request
+    $headers = $this->getUrlHeaders($request->getUri());
+    
+    return $headers;
+  }
+
+  /**
+   * Get the HTTP Headers of any HTTP url, including those not on S3
+   * The body of the url is not downloaded. Just the headers.
+   *
+   * @param String $url
+   * 
+  */
+  public function getUrlHeaders(string $url) {
     $headers = [];
     $client = new GuzzleHttp\Client();
     // We need to make a HTTP GET request then abort it 
@@ -192,7 +201,7 @@ class S3Stream
     try {
       $client->request(
         'GET',
-        $request->getUri(),
+        $url,
         [
           'on_headers' => function (GuzzleHttp\Psr7\Response $response) use (&$headers, $client) {
             $headers = $response->getHeaders();

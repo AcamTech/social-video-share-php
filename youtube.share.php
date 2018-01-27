@@ -3,16 +3,16 @@
  * Upload video from Amazon S3 to Youtube
  */
 
-require_once('lib/google.auth.php');
-require_once('lib/S3.stream.class.php');
-require_once('lib/youtube.video.upload.php');
+require_once('src/SocialVideoShare/GoogleAuth.php');
+require_once('src/SocialVideoShare/S3Stream.php');
+require_once('src/SocialVideoShare/YoutubeVideoUpload.php');
 
-use TorCDN\S3Stream;
-use TorCDN\GoogleAuth;
-use TorCDN\HttpServerIncomingClientRequest;
-use TorCDN\YoutubeVideoUpload;
+use TorCDN\SocialVideoShare\S3Stream;
+use TorCDN\SocialVideoShare\GoogleAuth;
+use TorCDN\SocialVideoShare\YoutubeVideoUpload;
+use TorCDN\Server\Request;
 
-$Request = new HttpServerIncomingClientRequest();
+$Request = new Request();
 
 // config data
 $siteBaseUri = 'http://localhost/codementor/latakoo/social-video-share/';

@@ -1,6 +1,6 @@
 <?php
 
-namespace TorCDN;
+namespace TorCDN\Server;
 
 /**
  * Simple Server Incoming Request wrapper
@@ -9,7 +9,7 @@ namespace TorCDN;
  * $Request = new Request();
  * $Request->get('foo'); // bar
  */
-class HttpServerIncomingClientRequest {
+class Request {
 
 	/**
 	 * @var {Array} HTTP Request Headers

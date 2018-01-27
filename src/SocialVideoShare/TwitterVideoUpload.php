@@ -1,11 +1,11 @@
 <?php
 
-namespace TorCDN\Twitter;
+namespace TorCDN\SocialVideoShare;
 
 use Codebird\Codebird; // https://github.com/jublonet/codebird-php
 use GuzzleHttp;
-use TorCDN\Session;
-use TorCDN\HttpServerIncomingClientRequest;
+use TorCDN\Server\Session;
+use TorCDN\Server\Request;
 use Exception;
 
 /**
@@ -31,13 +31,13 @@ class TwitterVideoUpload {
 
     /**
      * Session Service
-     * @var TorCDN\Session
+     * @var Session
      */
     protected $Session;
 
     /**
      * HTTP Request Service
-     * @var TorCDN\HttpServerIncomingClientRequest
+     * @var Request
      */
     protected $Request;
 
@@ -61,7 +61,7 @@ class TwitterVideoUpload {
     {
         $this->config = $config;
         $this->setSession($Session ? $Session : new Session(self::SESSION_DEFAULT_NS));
-        $this->Request = new HttpServerIncomingClientRequest();
+        $this->Request = new Request();
 
         Codebird::setConsumerKey($config['key'], $config['secret']);
         $this->codeBird = Codebird::getInstance();
@@ -70,7 +70,7 @@ class TwitterVideoUpload {
     /**
      * Set the session service
      *
-     * @param TorCDN\Session $Session
+     * @param Session $Session
      * @return void
      */
     public function setSession(Session $Session) {

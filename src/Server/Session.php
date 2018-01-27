@@ -1,6 +1,6 @@
 <?php
 
-namespace TorCDN;
+namespace TorCDN\Server;
 
 /**
  * Simple session wrapper

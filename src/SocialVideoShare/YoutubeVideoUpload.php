@@ -7,7 +7,7 @@
  * Uploads video to youtube using url, file path or readable stream
  */
 
-namespace TorCDN; 
+namespace TorCDN\SocialVideoShare; 
 
 use Google_Client;
 use Google_Service_YouTube;
@@ -27,7 +27,7 @@ class YoutubeVideoUpload
         $this->client = $client;
         $this->service = $service ? $service : new Google_Service_YouTube($client);
         $this->setMimeType('video/*');
-        $this->setChunkSizeBytes(1 * 1024 * 1024); // 1Mb
+        $this->setChunkSizeBytes(1 * 1024 * 1024); // 1Mb. Min is 262144 bytes
     }
 
     public function setTimeLimit(Int $timeoutSecs) {
@@ -111,14 +111,25 @@ class YoutubeVideoUpload
 
         $media->setFileSize($length);
 
-        var_dump([$this->chunkSizeBytes, $length]);
+        var_dump(['chunksize' => $this->chunkSizeBytes, 'content-length' => $length]);
 
         // Read the media file and upload it chunk by chunk.
         $status = false;
+        $chunk = '';
         while (!$status && !feof($stream)) {
-            $chunk = fread($stream, $this->chunkSizeBytes);
+            $chunk .= fread($stream, $this->chunkSizeBytes);
+            $len = strlen($chunk);
+
+            if ($len < 262144 || $len < $this->chunkSizeBytes) {
+                continue; // 262144 is min chunk size or upload fails
+            }
             echo 'Read from upload file stream bytes: ' . strlen($chunk) . "\n";
             $status = $media->nextChunk($chunk);
+            $chunk = '';
+        }
+
+        if (strlen($chunk) > 0) {
+            $media->nextChunk($chunk); // last chunk size can be less than 262144
         }
 
         fclose($stream);

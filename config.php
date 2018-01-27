@@ -1,27 +1,30 @@
 <?php
 
-// site config
-$siteBaseUri = 'http://localhost/codementor/latakoo/';
-$siteDomain = parse_url($siteBaseUri)['host'];
-$pilotBaseUri = $siteBaseUri;
+use Symfony\Component\HttpFoundation\Request;
 
-// FB OAuth configs
-$fbConfig = [
-  'app_id' => '552377038443474', // Replace {app-id} with your app id
-  'app_secret' => '3d3a54b33ff57cbadd165e1d5b09697c',
-  'default_graph_version' => 'v2.10',
+$request = Request::createFromGlobals();
+
+// uri without query params
+$scriptUri = strtok($request->getUri(), '?');
+
+$config = [
+  'google' => [
+    "app_name" => "Latakoo",
+    "response_type" => "code",
+    "client_id" => "850095945888-2hges0en1jud5genpgt01hfnq3b6ord5.apps.googleusercontent.com",
+    "client_secret" => "Qlavzeo3LyF98fnQeVXBnStE",
+    "redirect_uri" => $scriptUri,
+      "scope" => [
+          'https://www.googleapis.com/auth/youtube.force-ssl'
+      ]
+    ],
+  's3' => [
+    'region' => 'ap-southeast-1',
+    'credentials' => [
+        'key' => 'AKIAI4LS43SGBDJDZ4RQ',
+        'secret' => '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'
+    ]
+  ]
 ];
 
-// twitter OAuth configs
-$consumerKey = 'LHL2v73VQU4EswJxbt5lHUzFg';
-$consumerSecret = 'Xiu1es5wsdunu4H7pWgFF5IuWwQtHZ6inKJ8ljvaURxxuBDJDm';
-$redirectURL = $pilotBaseUri;
-
-// google OAuth configs
-$google_url = "https://accounts.google.com/o/oauth2/auth";
-$google_params = [
-	"response_type" => "code",
-	"client_id" => "850095945888-2hges0en1jud5genpgt01hfnq3b6ord5.apps.googleusercontent.com",
-	"redirect_uri" => $pilotBaseUri,
-	"scope" => "https://www.googleapis.com/auth/plus.me"
-];
+return $config;

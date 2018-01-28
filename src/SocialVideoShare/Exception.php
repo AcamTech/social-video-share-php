@@ -5,9 +5,15 @@
  * @copyright Copyright 2017, Gabirieli Lalasava
  */
 
- namespace TorCDN\SocialVideoShare;
+namespace TorCDN\SocialVideoShare;
 
-class Exception extends \Exception {}
+class Exception extends \Exception {
+
+  protected $code = 0;
+
+  protected $message = 'Uncaught TorCDN\SocialVideoShare\Exception thrown';
+
+}
 
   /**
  * Invalid parameter passed to method

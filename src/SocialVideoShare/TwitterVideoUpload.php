@@ -11,6 +11,8 @@ use TorCDN\SocialVideoShare\Exception;
 /**
  * OAuth and Video Upload to Twitter API
  * TODO: Separate magic API methods to own class
+ * TODO: Separate auth
+ * TODO: Make idempotent
  */
 class TwitterVideoUpload {
 
@@ -88,14 +90,16 @@ class TwitterVideoUpload {
      *                  oauth_token_secret
      *              ]
      */
-    public function getOAuthToken() {
+    public function getOAuthToken($returnUri = null) {
         $Session = $this->Session;
         $Request = $this->Request;
 
-        if ($Request->isset('oauth_verifier') && $Session->isset('oauth_verify')) 
-        {
-            // verify the token
-            $this->verifyToken($Request->isset('oauth_verifier'));
+        if ($Request->isset('oauth_verifier') && $Session->isset('oauth_verify')) {
+            $token = $this->verifyToken($Request->get('oauth_verifier'));
+            if ($returnUri) {
+                header('Location: ' . $returnUri);
+                die;
+            }
         }
 
         return [
@@ -106,6 +110,7 @@ class TwitterVideoUpload {
 
     public function createAuthUrl()
     {
+        $Session = $this->Session;
         // get the request token
         $reply = $this->oauth_requestToken([
             'oauth_callback' => $this->config['callback_url']
@@ -114,8 +119,8 @@ class TwitterVideoUpload {
         // store the token
         $this->setToken($reply->oauth_token, $reply->oauth_token_secret);
 
-        $Session->set('oauth_token', $reply->oauth_token);
-        $Session->set('oauth_token_secret', $reply->oauth_token_secret);
+        $Session->set('verify_oauth_token', $reply->oauth_token);
+        $Session->set('verify_oauth_token_secret', $reply->oauth_token_secret);
         $Session->set('oauth_verify', true);
         
         // get auth URL
@@ -126,9 +131,10 @@ class TwitterVideoUpload {
 
     protected function verifyToken($oauth_verifier)
     {
+        $Session = $this->Session;
         $this->setToken(
-            $Session->get('oauth_token'), 
-            $Session->get('oauth_token_secret')
+            $Session->get('verify_oauth_token'), 
+            $Session->get('verify_oauth_token_secret')
         );
         $Session->unset('oauth_verify');
         
@@ -140,6 +146,8 @@ class TwitterVideoUpload {
         // store the token (which is different from the request token!)
         $Session->set('oauth_token', $reply->oauth_token);
         $Session->set('oauth_token_secret', $reply->oauth_token_secret);
+
+        return $reply;
     }
 
     /**
@@ -274,15 +282,15 @@ class TwitterVideoUpload {
             [
             'on_headers' => function (GuzzleHttp\Psr7\Response $response) use (&$headers, $client) {
                 $headers = $response->getHeaders();
-                throw new Exception('Closing connection.');
+                throw new \Exception('Closing connection.');
             },
             'stream' => true
             ]
         );
-        } catch(Exception $e) { /* ignore */ }
+        } catch(\Exception $e) { /* ignore */ }
 
         if (!isset($headers['Content-Length'][0])) {
-            throw new Exception('Could not retrieve Content-Length from URL.');
+            throw new \Exception('Could not retrieve Content-Length from URL.');
         }
         
         return (int) $headers['Content-Length'][0];

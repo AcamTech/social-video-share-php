@@ -13,7 +13,8 @@
     },
     "autoload": {
         "psr-4": { 
-            "TorCDN\\": "src" 
+            "TorCDN\\SocialVideoShare\\": "src/SocialVideoShare",
+            "TorCDN\\Server\\": "src/Server"
         }
     },
     "autoload-dev" : {

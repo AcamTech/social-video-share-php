@@ -23,3 +23,8 @@ class InvalidMethodException extends Exception {}
  * Error returned from Twitter API
  */
 class TwitterApiException extends Exception {}
+
+/**
+ * Failed to retrieve URL HTTP headers
+ */
+class GetUrlHeadersException extends Exception {}

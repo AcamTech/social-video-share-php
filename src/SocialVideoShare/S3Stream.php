@@ -17,7 +17,7 @@ namespace TorCDN\SocialVideoShare;
 use Aws\S3\S3Client;
 use Aws\S3\Exception\S3Exception;
 use GuzzleHttp;
-use Exception;
+use TorCDN\SocialVideoShare\Exception;
 
 class S3Stream
 {
@@ -268,6 +268,3 @@ class S3Stream
     call_user_func_array($this->logger, func_get_args());
   }
 }
-
-class InvalidParamException extends Exception {}
-class GetUrlHeadersException extends Exception {}

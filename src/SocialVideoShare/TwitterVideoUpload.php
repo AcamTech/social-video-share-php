@@ -6,10 +6,11 @@ use Codebird\Codebird; // https://github.com/jublonet/codebird-php
 use GuzzleHttp;
 use TorCDN\Server\Session;
 use TorCDN\Server\Request;
-use Exception;
+use TorCDN\SocialVideoShare\Exception;
 
 /**
  * OAuth and Video Upload to Twitter API
+ * TODO: Separate magic API methods to own class
  */
 class TwitterVideoUpload {
 
@@ -79,6 +80,7 @@ class TwitterVideoUpload {
 
     /**
      * Retrieve accessToken or perform user OAuth to get one
+     * TODO: Make idempotent - remove $Request
      *
      * @return array Token 
      *              [
@@ -90,59 +92,54 @@ class TwitterVideoUpload {
         $Session = $this->Session;
         $Request = $this->Request;
 
-        if (!$Session->isset('oauth_token')) 
-        {
-            // get the request token
-            $reply = $this->oauth_requestToken([
-                'oauth_callback' => $this->config['callback_url']
-            ]);
-            
-            // store the token
-            $this->setToken($reply->oauth_token, $reply->oauth_token_secret);
-
-            $Session->set('oauth_token', $reply->oauth_token);
-            $Session->set('oauth_token_secret', $reply->oauth_token_secret);
-            $Session->set('oauth_verify', true);
-            
-            // redirect to auth website
-            $auth_url = $this->oauth_authorize();
-            header('Location: ' . $auth_url);
-            die();
-            
-        } 
-        elseif ($Request->isset('oauth_verifier') && $Session->isset('oauth_verify')) 
+        if ($Request->isset('oauth_verifier') && $Session->isset('oauth_verify')) 
         {
             // verify the token
-            $this->setToken(
-                $Session->get('oauth_token'), 
-                $Session->get('oauth_token_secret')
-            );
-            $Session->unset('oauth_verify');
-            
-            // get the access token
-            $reply = $this->oauth_accessToken([
-                'oauth_verifier' => $_GET['oauth_verifier']
-            ]);
-            
-            // store the token (which is different from the request token!)
-            $Session->set('oauth_token', $reply->oauth_token);
-            $Session->set('oauth_token_secret', $reply->oauth_token_secret);
-
-            // return to callback URL without GET parameters
-            header('Location: ' . $_SERVER['PHP_SELF']);
-            die();
-            
+            $this->verifyToken($Request->isset('oauth_verifier'));
         }
-
-        $this->setToken(
-            $Session->get('oauth_token'), 
-            $Session->get('oauth_token_secret')
-        );
 
         return [
             'oauth_token' => $Session->get('oauth_token'),
             'oauth_token_secret' => $Session->get('oauth_token_secret')
         ];
+    }
+
+    public function createAuthUrl()
+    {
+        // get the request token
+        $reply = $this->oauth_requestToken([
+            'oauth_callback' => $this->config['callback_url']
+        ]);
+        
+        // store the token
+        $this->setToken($reply->oauth_token, $reply->oauth_token_secret);
+
+        $Session->set('oauth_token', $reply->oauth_token);
+        $Session->set('oauth_token_secret', $reply->oauth_token_secret);
+        $Session->set('oauth_verify', true);
+        
+        // get auth URL
+        $auth_url = $this->oauth_authorize();
+
+        return $auth_url;
+    }
+
+    protected function verifyToken($oauth_verifier)
+    {
+        $this->setToken(
+            $Session->get('oauth_token'), 
+            $Session->get('oauth_token_secret')
+        );
+        $Session->unset('oauth_verify');
+        
+        // get the access token
+        $reply = $this->oauth_accessToken([
+            'oauth_verifier' => $oauth_verifier
+        ]);
+        
+        // store the token (which is different from the request token!)
+        $Session->set('oauth_token', $reply->oauth_token);
+        $Session->set('oauth_token_secret', $reply->oauth_token_secret);
     }
 
     /**
@@ -350,18 +347,3 @@ class TwitterVideoUpload {
         return $reply;
     }
 }
-
-/**
- * Invalid parameter passed to method
- */
-class InvalidParamException extends Exception {}
-
-/**
- * Invalid method call
- */
-class InvalidMethodException extends Exception {}
-
-/**
- * Error returned from Twitter API
- */
-class TwitterApiException extends Exception {}

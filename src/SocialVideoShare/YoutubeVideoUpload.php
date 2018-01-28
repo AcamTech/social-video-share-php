@@ -16,6 +16,7 @@ use Google_Http_MediaFileUpload;
 use Psr\Log\LoggerInterface;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
+use TorCDN\SocialVideoShare\Exception;
 
 class YoutubeVideoUpload
 {
@@ -142,7 +143,7 @@ class YoutubeVideoUpload
     private function uploadMedia($request, $stream, $length = null, $mimeType = 'video/*')
     {
         if (!$length) {
-            throw new InvalidParameterException(
+            throw new InvalidParamException(
                 'Length must be specified in uploadVideoFile() or uploadVideoStream()');
         }
         // Create a MediaFileUpload object for resumable uploads.
@@ -224,7 +225,7 @@ class YoutubeVideoUpload
     public function setChunkSizeBytes($chunkSizeBytes)
     {
         if ($chunkSizeBytes < 262144) {
-            throw new InvalidParameterException('ChunkSizeBytes must be more than 262144 bytes');
+            throw new InvalidParamException('ChunkSizeBytes must be more than 262144 bytes');
         }
         $this->chunkSizeBytes = $chunkSizeBytes;
     }
@@ -249,5 +250,3 @@ class YoutubeVideoUpload
     }
 
 }
-
-class InvalidParameterException extends \Exception {}

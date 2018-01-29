@@ -28,7 +28,29 @@ class InvalidMethodException extends Exception {}
 /**
  * Error returned from Twitter API
  */
-class TwitterApiException extends Exception {}
+class TwitterApiException extends Exception
+{
+
+  public function __construct($message, $code = 500, $method, $apiRequest = null, $apiResponse = null)
+  {
+    parent::__construct($message, $code);
+    $this->method      = $method;
+    $this->apiRequest  = $apiRequest;
+    $this->apiResponse = $apiResponse;
+  }
+
+  public function toJson()
+  {
+    return [
+      'error'   => $this->getMessage(),
+      'code'    => $this->getCode(),
+      'method'  => $this->method,
+      'path'    => str_replace('_', '/', $this->method),
+      'request' => $this->apiRequest,
+      'response' => $this->apiResponse
+    ];
+  }
+}
 
 /**
  * Failed to retrieve URL HTTP headers

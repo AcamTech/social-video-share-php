@@ -203,7 +203,8 @@ class TwitterVideoUpload {
         $reply = $this->media_upload([
             'command'     => 'INIT',
             'media_type'  => 'video/mp4',
-            'total_bytes' => $size_bytes
+            'total_bytes' => $size_bytes,
+            'media_category' => 'tweet_video'
         ], $progressCallback);
         
         $media_id = $reply->media_id_string;
@@ -212,7 +213,7 @@ class TwitterVideoUpload {
         
         $segment_id = 0;
 
-        $chunk = '';
+        $buffer = '';
         $chunkSizeBytes = 1048576; // 1MB per chunk
         
         while (! feof($stream)) {
@@ -220,39 +221,78 @@ class TwitterVideoUpload {
             // fread non local files returns as soon as a packet is available
             // usually 8192 bytes. http://php.net/manual/en/function.fread.php
             // buffer packets to $chunkSizeBytes then upload
-            $packet = fread($stream, $chunkSizeBytes); 
+            $packet = fread($stream, $chunkSizeBytes);
+            $buffer .= $packet;
 
-            $chunk .= $packet;
+            if (feof($stream) || strlen($buffer) >= $chunkSizeBytes) {
 
-            // TODO: Send exact $chunkSizeBytes length chunks?
-            if (feof($stream) || strlen($chunk) >= $chunkSizeBytes) {
-                $reply = $this->media_upload([
-                    'command'       => 'APPEND',
-                    'media_id'      => $media_id,
-                    'segment_index' => $segment_id,
-                    'media'         => $chunk
-                ], $progressCallback);
-                $chunk = '';
-                $segment_id++;
+                while (strlen($buffer) >= $chunkSizeBytes) {
+                    $chunk = substr($buffer, 0, $chunkSizeBytes);
+                    $buffer = substr($buffer, $chunkSizeBytes);
+                    $reply = $this->media_upload([
+                        'command'       => 'APPEND',
+                        'media_id'      => $media_id,
+                        'segment_index' => $segment_id,
+                        'media'         => $chunk
+                    ], $progressCallback);
+                    $segment_id++;
+                }
+                
+                if (feof($stream) && strlen($buffer)) {
+                    $chunk = $buffer;
+                    $reply = $this->media_upload([
+                        'command'       => 'APPEND',
+                        'media_id'      => $media_id,
+                        'segment_index' => $segment_id,
+                        'media'         => $chunk
+                    ], $progressCallback);
+                    $segment_id++;
+                    $buffer = '';
+                }
+
             }
             
         }
         
         fclose($stream);
-        
+
         // FINALIZE the upload
-        
-        $reply = $this->media_upload([
+        $request = [
             'command'       => 'FINALIZE',
             'media_id'      => $media_id
-        ], $progressCallback);
+        ];
+        $reply = $this->media_upload($request, $progressCallback);
         
         if ($reply->httpstatus < 200 || $reply->httpstatus > 299) {
-            throw new TwitterApiException('Invalid HTTP Status code.');
+            throw new TwitterApiException(
+                'Invalid HTTP Status code.', $reply->httpstatus, 'media_upload', $request, $reply
+            );
         }
-        
+
         // if you have a field `processing_info` in the reply,
         // use the STATUS command to check if the video has finished processing.
+        // https://developer.twitter.com/en/docs/media/upload-media/api-reference/get-media-upload-status
+        $status = !isset($reply->processing_info);
+        if (!$status) {
+            sleep($reply->processing_info->check_after_secs);
+        }
+        while($status == false) {
+            $request = [
+                'command'    => 'STATUS',
+                'media_id'   => $media_id,
+                'httpmethod' => 'GET'
+            ];
+            $reply = $this->media_upload($request, $progressCallback);
+            if ($reply->processing_info->state == 'failed') {
+                throw new TwitterApiException(
+                    'Video processing failed.', $reply->httpstatus, 'media_upload', $request, $reply
+                );
+            }
+            $status = $reply->processing_info->state == 'succeeded' ? true : false;
+            if (!$status) {
+                sleep($reply->processing_info->check_after_secs);
+            }
+        }
         
         // Now use the media_id in a Tweet
         $reply = $this->statuses_update([
@@ -349,7 +389,7 @@ class TwitterVideoUpload {
         }
 
         if (isset($reply->errors) || isset($reply->error)) {
-            throw new TwitterApiException($method . ' API call returned an error.');
+            throw new TwitterApiException('API call returned Error', 500, $method, $arguments, $reply);
         }
 
         return $reply;

@@ -1,6 +1,6 @@
 <?php
 
-namespace TorCDN\SocialVideoShareApi;
+namespace TorCDN\SocialVideoShare;
 
 /**
  * Helper functions

@@ -9,10 +9,10 @@ use TorCDN\SocialVideoShare\S3Stream;
 use TorCDN\SocialVideoShare\VimeoAuth;
 use Vimeo\Vimeo;
 use TorCDN\Server\Session;
-use TorCDN\SocialVideoShareApi\RestApi;
+use TorCDN\SocialVideoShare\RestApi;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use TorCDN\SocialVideoShareApi\Util;
+use TorCDN\SocialVideoShare\Util;
 
 /**
  * REST API endpoint for Vimeo Authentication

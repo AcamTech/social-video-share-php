@@ -3,7 +3,7 @@
  * Rest API for Upload and Share video to Youtube from S3
  */
 
-use TorCDN\SocialVideoShareApi\RestApi;
+use TorCDN\SocialVideoShare\RestApi;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use TorCDN\SocialVideoShare\S3Stream;

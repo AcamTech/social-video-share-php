@@ -7,7 +7,7 @@
 use TorCDN\SocialVideoShare\S3Stream;
 use TorCDN\SocialVideoShare\TwitterVideoUpload;
 use TorCDN\Server\Session;
-use TorCDN\SocialVideoShareApi\RestApi;
+use TorCDN\SocialVideoShare\RestApi;
 use TorCDN\SocialVideoShare\Exception;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;

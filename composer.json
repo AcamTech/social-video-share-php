@@ -9,7 +9,8 @@
         "aws/aws-sdk-php": "3.*",
         "vimeo/vimeo-api": "^1.3",
         "jublonet/codebird-php": "^3.1",
-        "silex/silex": "~2.0"
+        "silex/silex": "~2.0",
+        "facebook/graph-sdk": "^5.6"
     },
     "autoload": {
         "psr-4": { 

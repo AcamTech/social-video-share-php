@@ -14,7 +14,8 @@ use TorCDN\SocialVideoShare\Exception;
  * TODO: Separate auth
  * TODO: Make idempotent
  */
-class TwitterVideoUpload {
+class TwitterVideoUpload
+{
 
     /**
      * Codebird instance
@@ -58,7 +59,7 @@ class TwitterVideoUpload {
     /**
      * Create Instance with configuration
      * @param Array $config [key, secret, callback_url]
-     * @param TorCDN\Session $ns Session service
+     * @param TorCDN\Session $Session Session service
      */
     public function __construct($config, Session $Session = null)
     {
@@ -193,9 +194,6 @@ class TwitterVideoUpload {
         
         if (!is_resource($stream)) {
             throw new InvalidParamException('Parameter $stream must be a valid stream resource.');
-        }
-        if ($progressCallback && !is_callable($progressCallback)) {
-            throw new InvalidParamException('Parameter $progressCallback must be a callable.');
         }
         
         // INIT the upload
@@ -333,7 +331,7 @@ class TwitterVideoUpload {
             throw new \Exception('Could not retrieve Content-Length from URL.');
         }
         
-        return (int) $headers['Content-Length'][0];
+        return (int) trim($headers['Content-Length'][0], '"');
     }
 
     /**

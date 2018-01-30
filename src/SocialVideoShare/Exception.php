@@ -3,6 +3,8 @@
  * Social Video Share Exceptions
  * @author Gabe Lalasava <gabe@fijiwebdesign.com>
  * @copyright Copyright 2017, Gabirieli Lalasava
+ * 
+ * @todo move all exceptions to Exception/ directory
  */
 
 namespace TorCDN\SocialVideoShare;

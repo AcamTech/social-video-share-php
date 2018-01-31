@@ -32,7 +32,7 @@ class FacebookVideoUpload
      * @var array
      */
     protected $permissions = [
-        'email', 'publish_actions'
+        'email', 'public_profile', 'publish_actions', 'user_videos'
     ];
 
     /**

@@ -42,7 +42,7 @@ $config = [
     'default_graph_version' => 'v2.11',
     'default_access_token' => null, // optional
     'permissions' => [
-      'email', 'publish_actions', 'videos'
+      'email', 'public_profile', 'publish_actions', 'user_videos'
     ]
   ]
 ];

@@ -18,7 +18,7 @@ Eg: Downloads a video from S3 and publishes to facebook feed
 
 * Youtube   - Share local file, URL or S3
 * Facebook  - Share local file, URL or S3
-* Linkedin  - Share local file, URL or S3
+* Twitter   - Share local file, URL or S3
 * Vimeo     - Share URL or S3 (Local current not working)
 
 ## Supported Social Networks without upload (link to video only)

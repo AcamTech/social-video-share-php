@@ -13,7 +13,7 @@ class FacebookCurlVideoUpload
     /**
      * Facebook Graph API URL for video upload
      */
-    static $facebookAPIbaseURL = 'https://graph-video.facebook.com/v2.3/';
+    static $facebookAPIbaseURL = 'https://graph-video.facebook.com/v2.12/';
 
     /**
      * @var array $facebookConfig Facebook configuration
@@ -21,8 +21,8 @@ class FacebookCurlVideoUpload
     protected $facebookConfig = [
         'app_id' => '',
         'app_secret' => '',
-        'default_graph_version' => 'v2.4',
-        'default_access_token' => null
+        'default_graph_version' => 'v2.3',
+        //'default_access_token' => null
     ];
 
     /**
@@ -60,7 +60,7 @@ class FacebookCurlVideoUpload
     {
         $this->facebookConfig = $facebookConfig;
         $this->fb = new Facebook($facebookConfig);
-        if (isset($facebookConfig['default_access_token'])) {
+        if (isset($facebookConfig['default_access_token']) && $facebookConfig['default_access_token']) {
             $this->setAccessToken($facebookConfig['default_access_token']);
         }
     }
@@ -119,21 +119,31 @@ class FacebookCurlVideoUpload
                 'start_offset' => $start_offset,
                 'video_file_chunk' => $s2['chunk']
             );
+            //$filename = self::getFilenameFromUrl($url);
+            //$mimieType = self::getMimeTypeFromUrl($url);
+            $filename = 'big_buck_bunny.mp4';
+            $mimeType = 'video/mp4';
+            $headers = array(
+                'Content-Disposition'=> 'form-data; name="source"; filename="' . $filename . '"',
+                'Content-Type' => $mimeType
+            );
 
             // retry sending each chunk with $maxRetries limit
             $success = false;
-            $maxRetries = 3;
-            while($maxRetries > 0 && !$success) {
+            $maxRetries = 2;
+            while(!$success) {
                 try {
-                    $r = $this->request('videos', $p);
+                    $r = $this->request('videos', $p, $headers);
                 } catch(\Exception $e) {
                     $maxRetries--;
+                    if ($maxRetries <= 0) {
+                        throw $e;
+                    }
                     continue;
                 }
                 $success = true;
             }
             
-            $r = $this->request('videos', $p);
             $start_offset = $r['start_offset'];
             $end_offset = $r['end_offset'];
             $s = $s2;
@@ -175,8 +185,7 @@ class FacebookCurlVideoUpload
     */
     protected function request($call, $parameters = [], $headers = [], $json_decode = true, $use_post = true)
     {
-        $this->log('Facebook API request', $call, $parameters);
-
+        
         $url = self::$facebookAPIbaseURL;
 
         if (!$this->token) {
@@ -189,6 +198,8 @@ class FacebookCurlVideoUpload
             $parameters['access_token'] = $this->token;
         }
 
+        $this->log('Facebook API request', $url . $call, $parameters, $headers);
+
         $paramstring = '';
         if (!empty($parameters)) {
             foreach($parameters as $name => $parameter) {
@@ -196,8 +207,6 @@ class FacebookCurlVideoUpload
                 $paramstring .= urlencode($name) . '=' . urlencode($parameter);
             }
         }
-        
-        //$this->log("COGI URL: " . $url . $call . '?'.$paramstring);
 
         if ($use_post) {
             $ch = curl_init($url . $call);

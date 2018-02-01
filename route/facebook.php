@@ -87,6 +87,11 @@ $api->get('/facebook/share', function (RestApi $api, Request $request) use ($con
   if (!$accessToken) {
     $accessToken = $Session->get('accessToken');
   }
+
+  if (!$accessToken) {
+    throw new \Exception('Required query parameter: accessToken. Call /facebook/auth to generate one.', 400);
+  }
+
   $facebook->setAccessToken($accessToken);
 
   if (!$url) {
@@ -107,27 +112,6 @@ $api->get('/facebook/logout', function (RestApi $api, Request $request) use ($co
   $Session->destroy();
   return $api->json(['status' => 'Log out ok']);
 
-});
-
-/**
- * Debugging
- */
-$api->get('/debug', function (RestApi $api) {
-  $resp = file_get_contents($api['config']['monolog.logfile']);
-  return new Response($resp, Response::HTTP_OK, ['Content-Type' => 'text/plain']);
-});
-
-/**
- * Error handling
- */
-$api->error(function (Exception $e) use ($api) {
-  $resp = is_callable([$e, 'toJson']) 
-    ? $e->toJson() 
-    : [
-      'error'   => $e->getMessage(),
-      'code'    => $e->getCode()
-    ];
-  return $api->json($resp);
 });
 
 /**
@@ -156,9 +140,8 @@ function facebookVideoUploadFactory($config)
 
   $logger = facebookLoggerFactory();
   $facebook->setLogger(function() use ($logger) {
-    $maxLen = 100;
     $args = func_get_args();
-    $logger->debug(stringifyLogValue($args, $maxLen));
+    $logger->debug(stringifyLogValue($args));
   });
 
   return $facebook;
@@ -170,7 +153,7 @@ function facebookVideoUploadFactory($config)
  * @param mixed $obj
  * @return void
  */
-function stringifyLogValue($obj, $maxLen = 80)
+function stringifyLogValue($obj, $maxLen = 200)
 {
   $str = '';
   if (is_scalar($obj)) {

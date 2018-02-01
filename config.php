@@ -37,10 +37,10 @@ $config = [
     'callback_url' => $scriptUri
   ],
   'facebook' => [
-    'app_id' => '552377038443474',
-    'app_secret' => '3d3a54b33ff57cbadd165e1d5b09697c',
-    'default_graph_version' => 'v2.11',
-    'default_access_token' => null, // optional
+    'app_id' => '552377038443474', // Replace {app-id} with your app id
+	  'app_secret' => '3d3a54b33ff57cbadd165e1d5b09697c',
+    'default_graph_version' => 'v2.3',
+    //'default_access_token' => null, // optional
     'permissions' => [
       'email', 'public_profile', 'publish_actions', 'user_videos'
     ]

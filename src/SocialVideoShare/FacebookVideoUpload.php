@@ -2,7 +2,8 @@
 
 namespace TorCDN\SocialVideoShare;
 
-use Facebook\Facebook;
+use TorCDN\SocialVideoShare\Facebook;
+use Facebook\FileUpload\FacebookResumableUploader;
 use TorCDN\Server\Session;
 use TorCDN\Server\Request;
 use TorCDN\SocialVideoShare\Exception\NoAccessTokenException;
@@ -26,6 +27,22 @@ class FacebookVideoUpload
      * @var Facebook\Facebook
      */
     protected $fb;
+
+    /**
+     * Facebook User Node
+     * @var [type]
+     */
+    protected $user;
+
+    /**
+     * @var array $config Facebook configuration
+     */
+    protected $config = [
+        'app_id' => '',
+        'app_secret' => '',
+        'default_graph_version' => 'v2.11',
+        'default_access_token' => null
+    ];
 
     /**
      * Permissions/scope required for video upload
@@ -167,10 +184,11 @@ class FacebookVideoUpload
     /**
      * Upload a video file from a remote HTTP(S) URL
      *
-     * @param array $meta Video meta data 
+     * @param array $metadata Video meta data 
      *              [
      *                  title => {title}, 
-     *                  description => {description}
+     *                  description => {description},
+     *                  target => {userid} | {pageid}
      *              ]
      * @param String $url Full URL
      * @param Int $size Optional Filesize. 
@@ -178,22 +196,57 @@ class FacebookVideoUpload
      * @param Callable $progressCallback Function to receive progress updates
      * @return Object statuses_update API respose object
      */
-    public function uploadVideoFromUrl($meta, $url, int $size = null, callable $progressCallback = null) {
+    public function uploadVideoFromUrl($metadata, $url, int $size = null, callable $progressCallback = null) {
         if (!$size) {
             $size = $this->getUrlContentLength($url);
         }
-        
-        $fbCurlVideoUpload = new FacebookCurlVideoUpload($this->config);
-        $fbCurlVideoUpload->setAccessToken($this->getAccessToken());
 
-        if ($this->logger) {
-            $fbCurlVideoUpload->setLogger($this->logger);
+        $metadata = array_merge([
+            'title' => '',
+            'description' => '',
+            'target' => null
+        ], $metadata);
+
+        $target = $metadata['target'] ?: $this->getUserId();
+
+        if (!$accessToken = $this->accessToken) {
+            throw new NoAccessTokenException();
         }
 
-        $reply = $fbCurlVideoUpload->transferToFacebookFromUrl(
-            $meta['title'], $meta['description'], $url, $size
-        );
-        return $reply;
+        // custom Resumable upload supporting URLs
+        $app = $this->fb->getApp();
+        $client = $this->fb->getClient();
+        $graphVersion = $this->config['default_graph_version'] ?: 'v2.11';
+        $uploader = new FacebookResumableUploader($app, $client, $accessToken, $graphVersion);
+        $endpoint = '/' . $target . '/videos'; 
+        $file = new FacebookUrl($url);
+        $chunk = $uploader->start($endpoint, $file);
+        
+        do {
+            // use existing implementation maxTriesTransfer or use your own code here
+            $chunk = $this->fb->maxTriesTransfer($uploader, $endpoint, $chunk, $maxTransferTries);
+        } while (!$chunk->isLastChunk());
+
+        return [
+            'video_id' => $chunk->getVideoId(),
+            'success' => $uploader->finish($endpoint, $chunk->getUploadSessionId(), $metadata),
+        ];
+    }
+
+    /**
+     * Retrieve the facebook user for the set accessToken
+     * @return Facebook\GraphNodes\GraphUser
+     */
+    public function getUserId()
+    {
+        if (!$this->accessToken) {
+            throw new NoAccessTokenException;
+        }
+        if (!$this->user) {
+            $this->user = $this->fb->get('/me', $this->accessToken)->getGraphUser();
+        }
+        $this->log('FB User: ', $this->user);
+        return $this->user->getProperty('id');
     }
 
     /**

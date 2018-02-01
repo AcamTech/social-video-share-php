@@ -222,7 +222,7 @@ class S3Stream
         [
           'on_headers' => function (GuzzleHttp\Psr7\Response $response) use (&$headers, $client) {
             $headers = $response->getHeaders();
-            throw $exception = new GetUrlHeadersException('Closing connection because we have headers.');
+            throw $exception = new \Exception('Closing connection because we have headers.');
           },
           'stream' => true,
           'timeout' => 1, /* sometime on_headers is not triggered */
@@ -233,7 +233,7 @@ class S3Stream
               $uploadedBytes
             ) {
               if ($downloadedBytes > 1000 * 1000) {
-                throw $exception = new GetUrlHeadersException('Closing connection because 1Mb already downloaded');
+                throw $exception = new \Exception('Closing connection because 1Mb already downloaded');
               }
             }
         ]
@@ -243,7 +243,7 @@ class S3Stream
         $headers = $response->getHeaders();
       }
 
-    } catch(Exception $e) {
+    } catch(\Exception $e) {
       if (!($exception instanceof GetUrlHeadersException)) {
         $exception = $e;
       }

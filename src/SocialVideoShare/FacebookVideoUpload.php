@@ -210,7 +210,7 @@ class FacebookVideoUpload
         $target = $metadata['target'] ?: $this->getUserId();
 
         if (!$accessToken = $this->accessToken) {
-            throw new NoAccessTokenException();
+            throw new NoAccessTokenException;
         }
 
         // custom Resumable upload supporting URLs

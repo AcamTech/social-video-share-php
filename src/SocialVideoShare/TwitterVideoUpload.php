@@ -109,12 +109,18 @@ class TwitterVideoUpload
         ];
     }
 
-    public function createAuthUrl()
+    /**
+     * Create an Auth URL with return url $callbackurl
+     *
+     * @param string $callbackUrl
+     * @return string authUrl
+     */
+    public function createAuthUrl($callbackUrl = null)
     {
         $Session = $this->Session;
         // get the request token
         $reply = $this->oauth_requestToken([
-            'oauth_callback' => $this->config['callback_url']
+            'oauth_callback' => $callbackUrl ?: $this->config['callback_url']
         ]);
         
         // store the token

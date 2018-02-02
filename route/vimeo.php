@@ -17,8 +17,8 @@ use TorCDN\SocialVideoShare\Util;
 /**
  * REST API endpoint for Vimeo Authentication
  * @method /vimeo/auth
- * @param String returnUri    (Optional) Your app URL. Will be appended with ?accessToken={accessToken}
- * @param String redirectUri  (Optional) URL that Handles OAuth. Defaults to absolute URL to /vimeo/auth route
+ * @param String appUrl   (Optional) Your app URL to return to after Authentication.
+ *                        Note: /vimeo/auth handles OAuth. appUrl is redirected to after authentication.
  */
 $api->get('/vimeo/auth', function (RestApi $api, Request $request) use ($config) {
   $vimeo = $config['vimeo'];
@@ -26,19 +26,15 @@ $api->get('/vimeo/auth', function (RestApi $api, Request $request) use ($config)
   $Session = new Session('vimeo');
   $Vimeo = new Vimeo($vimeo['client_id'], $vimeo['client_secret']);
 
-  $returnUri    = $request->get('returnUri');
-  $redirectUri  = $request->get('redirectUri');
+  $appUrl    = $request->get('appUrl');
   $code         = $request->get('code');
 
   $tokenResp    = $Session->get('tokenResp');
 
-  if (!$redirectUri) {
-    $redirectUri = isset($vimeo['redirectUri']) 
-      ? $vimeo['redirectUri'] : strtok($request->getUri(), '?');
-  }
+  $redirectUri = isset($vimeo['redirectUri']) ? $vimeo['redirectUri'] : strtok($request->getUri(), '?');
 
-  if (!$returnUri) {
-    $returnUri = strtok($request->getUri(), '?');
+  if (!$appUrl) {
+    $appUrl = strtok($request->getUri(), '?');
   }
 
   if ($code) {
@@ -54,13 +50,13 @@ $api->get('/vimeo/auth', function (RestApi $api, Request $request) use ($config)
     }
     $Session->set('tokenResp', $tokenResp);
 
-    return $api->redirect($state['returnUri']);
+    return $api->redirect($state['appUrl']);
   }
 
   $authUrl = '';
   if (!$tokenResp) {
     $state = Util::generateRandomSecureToken();
-    $Session->set($state, ['returnUri' => $returnUri]);
+    $Session->set($state, ['appUrl' => $appUrl]);
     $authUrl = $Vimeo->buildAuthorizationEndpoint($redirectUri, $vimeo['scopes'], $state);
   }
 
@@ -76,10 +72,17 @@ $api->get('/vimeo/auth', function (RestApi $api, Request $request) use ($config)
 /**
  * REST API endpoint for Vimeo video upload and share
  * @method /vimeo/share
- * @param String accessToken  (Required) Access Token from /vimeo/auth
- * @param String bucket       (Optional) S3 bucket
- * @param String filename     (Optional) S3 File path
- * @param String url          (Optional) If not using S3 specificy a public video URL
+ * @param String accessToken  (Optional) Access Token from /vimeo/auth
+ * 
+ * If Uploading from S3
+ * @param String bucket       S3 bucket
+ * @param String filename     S3 File path
+ * 
+ * If Uploading from URL
+ * @param String url          If not using S3 specificy a public video URL
+ * 
+ * @param String title        Video title
+ * @param String description  Video description
  */
 $api->get('/vimeo/share', function (RestApi $api, Request $request) use ($config) {
   $vimeo = $config['vimeo'];
@@ -87,10 +90,20 @@ $api->get('/vimeo/share', function (RestApi $api, Request $request) use ($config
   $execTimeLimitMax = 60 * 15; // 15 mins
   $execTimeLimit = min($request->get('execTimeLimit'), $execTimeLimitMax);
 
+  $Session = new Session('vimeo');
+
   $bucket       = $request->get('bucket');
   $filename     = $request->get('filename');
   $url          = $request->get('url');
   $accessToken  = $request->get('accessToken');
+  $title        = $request->get('title');
+  $description  = $request->get('description');
+
+  if (!$accessToken) {
+    $tokenResp = $Session->get('tokenResp');
+    $accessToken = isset($tokenResp['body']['access_token']) 
+      ? $tokenResp['body']['access_token'] : null;
+  }
 
   if (!$url && !($bucket || $filename)) {
     throw new \Exception('Required query parameter: url or bucket and filename.', 400);
@@ -107,7 +120,14 @@ $api->get('/vimeo/share', function (RestApi $api, Request $request) use ($config
   if (!$url) {
     $url = $S3Stream->getUrl($bucket, $filename);
   }
-  $resp = $Vimeo->request('/me/videos', array('type' => 'pull', 'link' => $url), 'POST');
+
+  $params = [
+    'type'        => 'pull', 
+    'link'        => $url, 
+    'name'        => $title, 
+    'description' => $description
+  ];
+  $resp = $Vimeo->request('/me/videos', $params, 'POST');
 
   return $api->json($resp);
 

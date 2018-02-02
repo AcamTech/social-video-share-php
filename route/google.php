@@ -17,18 +17,27 @@ use Monolog\Handler\StreamHandler;
 /**
  * REST API endpoint for Google Authentication
  * @method /google/auth
- * @param String returnUri    (Optional) Your app URL. Will be appended with ?accessToken={accessToken}
- * @param String redirectUri  (Optional) Defaults to absolute URL to /vimeo/auth route
+ * @param String appUrl    (Optional) Your app URL. Will be appended with ?accessToken={accessToken}
  */
 $api->get('/google/auth', function (RestApi $api, Request $request) use ($config) {
 
-  $redirectUrl = $request->get('redirectUrl');
+  $appUrl      = $request->get('appUrl');
+  $redirectUrl = strtok($request->getUri(), '?');
 
-  $Client = new Google_Client();
-  $GoogleAuth = new GoogleAuth($config['google'], $Client, new Session('google'));
+  $Session     = new Session('google');
+  $Client      = new Google_Client();
+  $GoogleAuth  = new GoogleAuth($config['google'], $Client, $Session);
 
   $accessToken = $GoogleAuth->getAccessToken();
-  $authUrl = $GoogleAuth->createAuthUrl($redirectUrl);
+  $authUrl     = $GoogleAuth->createAuthUrl($redirectUrl);
+
+  if (!$accessToken) {
+    $Session->set('appUrl', $appUrl);
+  }
+
+  if ($request->get('code')) {
+    return $api->redirect($Session->get('appUrl') ?: $redirectUrl);
+  }
 
   $resp = [
     'accessToken' => $accessToken,
@@ -40,16 +49,26 @@ $api->get('/google/auth', function (RestApi $api, Request $request) use ($config
 
 /**
  * Upload and share to youtube
+ * @method /youtube/share
+ * 
+ * If using a URL
+ * @param $url Publically accessible URL of video
+ * 
+ * If using S3
+ * @param $bucket S3 Bucket
+ * @param $filename S3 file path
  */
 $api->get('/youtube/share', function (RestApi $api, Request $request) use ($config) {
   // execution time limit not exceeding execTimeLimitMax
   $execTimeLimitMax = 60 * 60; // 1 hour
   $execTimeLimit = min($request->get('execTimeLimit'), $execTimeLimitMax);
 
-  $bucket = $request->get('bucket');
-  $filename = $request->get('filename');
-  $url = $request->get('url');
-  $accessToken = $request->get('accessToken');
+  $Session = new Session('google');
+
+  $bucket       = $request->get('bucket');
+  $filename     = $request->get('filename');
+  $url          = $request->get('url');
+  $accessToken  = $Session->get('google_access_token');
 
   if (!$url && !($bucket || $filename)) {
     throw new \Exception('Required query parameter: url or bucket and filename.');
@@ -58,11 +77,11 @@ $api->get('/youtube/share', function (RestApi $api, Request $request) use ($conf
     throw new \Exception('Required query parameter: accessToken.');
   }
 
-  $autoTitle = $filename ?: basename(strtok($url, '?'));
-  $title = $request->get('title') ?: $autoTitle;
-  $description = $request->get('description');
-  $categoryId = $request->get('categoryId');
-  $privacyStatus = $request->get('privacyStatus') ?: 'public';
+  $autoTitle      = $filename ?: basename(strtok($url, '?'));
+  $title          = $request->get('title') ?: $autoTitle;
+  $description    = $request->get('description');
+  $categoryId     = $request->get('categoryId');
+  $privacyStatus  = $request->get('privacyStatus') ?: 'public';
   
   $Client = new Google_Client();
   $Client->setAccessToken($accessToken);
@@ -128,10 +147,20 @@ $api->get('/youtube/share', function (RestApi $api, Request $request) use ($conf
   $resp = [
     'upload' => $videoMeta,
     'length' => $length,
-    'url'     => $url,
+    'url'    => $url,
     'status' => $status,
     'upload_progress' => $upload_progress
   ];
 
   return $api->json($resp);
+});
+
+/**
+ * REST API endpoint for Google logout
+ * @method /google/logout
+ */
+$api->get('/google/logout', function (RestApi $api) {
+  $Session = new Session('google');
+  $Session->destroy();
+  return $api->json(['status' => 'Log out ok']);
 });

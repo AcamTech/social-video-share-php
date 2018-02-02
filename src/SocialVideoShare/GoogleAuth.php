@@ -6,7 +6,8 @@ use TorCDN\Server\Request;
 use TorCDN\Server\Session;
 use Google_Client;
 
-class GoogleAuth {
+class GoogleAuth
+{
 
 	/**
 	 * @var Google_Client

@@ -17,14 +17,14 @@ use Monolog\Handler\StreamHandler;
 /**
  * REST API endpoint for facebook Authentication
  * @method /facebook/auth
- * @param String appUri    (Optional) Your app URL to return to after authentication. 
+ * @param String appUrl    (Optional) Your app URL to return to after authentication. 
  *               Note: API handles OAuth callback. Your App URL only receives the accessToken
  */
 $api->get('/facebook/auth', function (RestApi $api, Request $request) use ($config) {
 
-  $returnUri = strtok($request->getUri(), '?');
-  $appUri = $request->get('appUri');
-  $authUrl = null;
+  $returnUri  = strtok($request->getUri(), '?');
+  $appUrl     = $request->get('appUrl');
+  $authUrl    = null;
 
   $Session = new Session('facebook');
   $Facebook = FacebookVideoUploadFactory($config['facebook']);
@@ -33,20 +33,19 @@ $api->get('/facebook/auth', function (RestApi $api, Request $request) use ($conf
 
   if (!$accessToken) {
     $accessToken = $Facebook->getAccessToken();
-    $authUrl = null;
   }
 
   if (!$accessToken) {
     $authUrl = $Facebook->createAuthUrl($returnUri);
-    $Session->set('appUri', $appUri);
+    $Session->set('appUrl', $appUrl);
   }
 
-  $Session->set('accessToken', $accessToken); 
+  $Session->set('accessToken', $accessToken);
 
-  // TODO: fix, security of appUri
-  $appUri = $Session->get('appUri');
+  // TODO: fix, security of appUrl
+  $appUrl = $Session->get('appUrl');
   if ($request->get('code')) {
-    return $api->redirect($appUri ? $appUri : $returnUri);
+    return $api->redirect($appUrl ? $appUrl : $returnUri);
   }
 
   $resp = [
@@ -61,9 +60,13 @@ $api->get('/facebook/auth', function (RestApi $api, Request $request) use ($conf
  * REST API endpoint for facebook video upload and share
  * @method /facebook/share
  * @param String accessToken  (Optional) Access Token from /facebook/auth
- * @param String bucket       (Optional) S3 bucket
- * @param String filename     (Optional) S3 File path
- * @param String url          (Optional) If not using S3 specificy a public video URL
+ * 
+ * If using S3
+ * @param String bucket       S3 bucket
+ * @param String filename     S3 File path
+ * 
+ * If using a remote URL
+ * @param String url          Public video URL
  */
 $api->get('/facebook/share', function (RestApi $api, Request $request) use ($config) {
 
@@ -104,14 +107,13 @@ $api->get('/facebook/share', function (RestApi $api, Request $request) use ($con
 });
 
 /**
- * REST API endpoint for Vimeo logout
- * @method /twitter/logout
+ * REST API endpoint for Facebook logout
+ * @method /facebook/logout
  */
-$api->get('/facebook/logout', function (RestApi $api, Request $request) use ($config) {
+$api->get('/facebook/logout', function (RestApi $api) {
   $Session = new Session('facebook');
   $Session->destroy();
   return $api->json(['status' => 'Log out ok']);
-
 });
 
 /**

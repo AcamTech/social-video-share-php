@@ -17,23 +17,27 @@ use Monolog\Handler\StreamHandler;
 /**
  * REST API endpoint for Twitter Authentication
  * @method /twitter/auth
- * @param String returnUri    (Optional) Your app URL to return to after authentication. 
+ * @param String appUrl    (Optional) Your app URL to return to after authentication. 
  *               Note: API handles OAuth callback. Your App URL only receives the accessToken
  */
 $api->get('/twitter/auth', function (RestApi $api, Request $request) use ($config) {
 
-  $returnUri = $request->get('returnUri');
-  if (!$returnUri) {
-    $returnUri = strtok($request->getUri(), '?');
-  }
+  $appUrl = $request->get('appUrl');
+  $returnUri = strtok($request->getUri(), '?');
 
+  $Session = new Session('twitter');
   $Twitter = twitterVideoUploadFactory($config['twitter']);
 
-  $token = $Twitter->getOAuthToken($returnUri);
-  $authUrl = $token['oauth_token'] ? null : $Twitter->createAuthUrl();
+  $token = $Twitter->getOAuthToken($Session->get('appUrl') ?: $returnUri);
+  $accessToken = $token['oauth_token'];
+  $authUrl = $accessToken ? null : $Twitter->createAuthUrl($returnUri);
+
+  if (!$accessToken) {
+    $Session->set('appUrl', $appUrl);
+  }
 
   $resp = [
-    'accessToken' => $token['oauth_token'],
+    'accessToken' => $accessToken,
     'token'       => $token,
     'authUrl'     => $authUrl
   ];

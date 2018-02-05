@@ -161,42 +161,45 @@ class TwitterVideoUpload
      * Upload a video file on local disk
      *
      * @param String $file File path
+     * @param String $statusMsg Status update message
      * @param Callable $progressCallback Function to receive progress updates
      * @return Object statuses_update API respose object
      */
-    public function uploadVideoFromFile($file, callable $progressCallback = null) {
+    public function uploadVideoFromFile($file, string $statusMsg = '', callable $progressCallback = null) {
         $size_bytes = filesize($file);
         $stream     = fopen($file, 'rb');
-        return $this->uploadVideoFromStream($stream, $size_bytes);
+        return $this->uploadVideoFromStream($stream, $statusMsg, $size_bytes);
     }
 
     /**
      * Upload a video file from a remote HTTP(S) URL
      *
      * @param String $url Full URL
+     * @param Array $statusMsg Status update message
      * @param Int $size Optional Filesize. 
      *            If not supplied, it will be read from Content-Length header
      * @param Callable $progressCallback Function to receive progress updates
      * @return Object statuses_update API respose object
      */
-    public function uploadVideoFromUrl($url, int $size = null, callable $progressCallback = null) {
+    public function uploadVideoFromUrl($url, string $statusMsg = '', int $size = null, callable $progressCallback = null) {
         if (!$size) {
             $size = $this->getUrlContentLength($url);
         }
         $stream = fopen($url, 'rb');
-        return $this->uploadVideoFromStream($stream, $size);
+        return $this->uploadVideoFromStream($stream, $statusMsg, $size);
     }
 
     /**
      * Upload a video given it's stream resource (file pointer/handle)
      *
      * @param Resource $stream Stream resource (file pointer/handle)
+     * @param String $statusMsg Status message of video post
      * @param Int $size_bytes Size of video file in bytes. 
      *            Required because content length cannot be predeterminted from a stream.
      * @param Callable $progressCallback Function to receive progress updates
      * @return Object statuses_update API respose object
      */
-    public function uploadVideoFromStream($stream, int $size_bytes, callable $progressCallback = null) {
+    public function uploadVideoFromStream($stream, string $statusMsg = '', int $size_bytes, callable $progressCallback = null) {
         
         if (!is_resource($stream)) {
             throw new InvalidParamException('Parameter $stream must be a valid stream resource.');
@@ -300,7 +303,7 @@ class TwitterVideoUpload
         
         // Now use the media_id in a Tweet
         $reply = $this->statuses_update([
-            'status'    => 'Twitter now accepts video uploads.',
+            'status'    => $statusMsg,
             'media_ids' => $media_id
         ]);
 

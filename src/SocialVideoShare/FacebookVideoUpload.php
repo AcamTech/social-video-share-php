@@ -224,7 +224,7 @@ class FacebookVideoUpload
         
         do {
             // use existing implementation maxTriesTransfer or use your own code here
-            $chunk = $this->fb->maxTriesTransfer($uploader, $endpoint, $chunk, $maxTransferTries);
+            $chunk = $this->fb->maxTriesTransfer($uploader, $endpoint, $chunk, $maxTransferTries = 3);
         } while (!$chunk->isLastChunk());
 
         return [

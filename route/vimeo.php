@@ -26,12 +26,10 @@ $api->get('/vimeo/auth', function (RestApi $api, Request $request) use ($config)
   $Session = new Session('vimeo');
   $Vimeo = new Vimeo($vimeo['client_id'], $vimeo['client_secret']);
 
-  $appUrl    = $request->get('appUrl');
+  $appUrl       = $request->get('appUrl');
   $code         = $request->get('code');
-
   $tokenResp    = $Session->get('tokenResp');
-
-  $redirectUri = isset($vimeo['redirectUri']) ? $vimeo['redirectUri'] : strtok($request->getUri(), '?');
+  $redirectUri  = isset($vimeo['redirectUri']) ? $vimeo['redirectUri'] : strtok($request->getUri(), '?');
 
   if (!$appUrl) {
     $appUrl = strtok($request->getUri(), '?');

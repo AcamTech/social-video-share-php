@@ -59,6 +59,7 @@ $api->get('/twitter/share', function (RestApi $api, Request $request) use ($conf
   $filename     = $request->get('filename');
   $url          = $request->get('url');
   $accessToken  = $request->get('accessToken');
+  $status       = $request->get('status');
 
   if (!$url && !($bucket || $filename)) {
     throw new \Exception('Required query parameter: url or bucket and filename.', 400);
@@ -74,7 +75,7 @@ $api->get('/twitter/share', function (RestApi $api, Request $request) use ($conf
   if (!$url) {
     $url = $S3Stream->getUrl($bucket, $filename);
   }
-  $resp = $Twitter->uploadVideoFromUrl($url);
+  $resp = $Twitter->uploadVideoFromUrl($url, $status);
 
   return $api->json($resp);
 

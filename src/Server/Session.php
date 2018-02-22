@@ -37,18 +37,18 @@ class Session {
 	 */
 	public function __construct($ns = null, $id = null) {
 		$this->setNamespace($ns ? $ns : self::DEFAULT_SESSION_NS);
-		if (session_status() != PHP_SESSION_ACTIVE) {
-			if ($id) {
-				session_id($id);
-			}
-			session_start();
-		} else {
-			if ($id) {
-				session_commit();
-				session_id($id);
-				session_start();
-			}
+
+		if (session_status() == PHP_SESSION_ACTIVE) {
+			session_commit();
 		}
+		if ($id) {
+			session_id($id);
+		}
+		// fixes session across sub domains
+		$domain = $this->getSecondaryDomain();
+		$this->setCookieDomain('.' . $domain);
+		session_start();
+
 		$this->SESSION = &$_SESSION[$this->getNamespace()];
 	}
 
@@ -116,5 +116,49 @@ class Session {
 	public function getNamespace() {
 		return $this->namespace ?: self::DEFAULT_SESSION_NS;
 	}
+
+	/**
+	 * Get all session keys
+	 */
+	public function getAll() {
+		return $this->SESSION;
+	}
+
+	/**
+	 * Get session Id
+	 */
+	public function getId() {
+		return session_id();
+	}
+
+	/**
+	 * Set the session cookie domain
+	 * @return String Domain eg: .domain.com or domain.com
+	 */
+	public function setCookieDomain($domain) {
+		session_set_cookie_params(360000, '/', $domain);
+		ini_set('session.cookie_domain', $domain);
+	}
+
+	/**
+	 * Get the real session cookie domain
+	 */
+	public function getCookieDomain() {
+		return ini_get('session.cookie_domain');
+	}
+
+	/**
+	 * Retrieve the secondary domain from a full domain
+	 * @return String
+	 */
+	protected function getSecondaryDomain()
+	{
+		$domain = $_SERVER['HTTP_HOST'] ?: $_SERVER['SERVER_NAME'];
+		if (preg_match('/([a-z0-9][a-z0-9\-]{1,63})\.[a-z]{2,6}$/i', $domain, $regs)) {
+			return $regs[0];
+		}
+		return false;
+	}
+	
 	
 }

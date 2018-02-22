@@ -26,20 +26,23 @@ $api->get('/twitter/auth', function (RestApi $api, Request $request) use ($confi
   $returnUri = strtok($request->getUri(), '?');
 
   $Session = new Session('twitter');
-  $Twitter = twitterVideoUploadFactory($config['twitter']);
+  $Twitter = twitterVideoUploadFactory($config['twitter'], $Session);
 
-  $token = $Twitter->getOAuthToken($Session->get('appUrl') ?: $returnUri);
+  $token = $Twitter->getOAuthToken($Session->get('appUrl'));
   $accessToken = $token['oauth_token'];
-  $authUrl = $accessToken ? null : $Twitter->createAuthUrl($returnUri);
+  $authUrl = $Twitter->createAuthUrl($returnUri);
 
-  if (!$accessToken) {
+  if ($appUrl) {
     $Session->set('appUrl', $appUrl);
   }
 
   $resp = [
     'accessToken' => $accessToken,
     'token'       => $token,
-    'authUrl'     => $authUrl
+    'authUrl'     => $authUrl,
+    'appUrl'      => $Session->get('appUrl'),
+    'session'     => $Session->getAll(),
+    'request'     => $_REQUEST
   ];
 
   return $api->json($resp);
@@ -67,7 +70,7 @@ $api->get('/twitter/share', function (RestApi $api, Request $request) use ($conf
 
   $Session = new Session('twitter');
   $S3Stream = new S3Stream($config['s3']);
-  $Twitter = twitterVideoUploadFactory($config['twitter']);
+  $Twitter = twitterVideoUploadFactory($config['twitter'], $Session);
 
   $token = $Twitter->getOAuthToken();
   $Twitter->setToken($accessToken ? $accessToken : $token['oauth_token'], $token['oauth_token_secret']);
@@ -97,9 +100,8 @@ $api->get('/twitter/logout', function (RestApi $api, Request $request) use ($con
  * @param array $config
  * @return TorCDN\SocialVideoShare\TwitterVideoUpload
  */
-function twitterVideoUploadFactory($config)
+function twitterVideoUploadFactory($config, $Session)
 {
-  $Session = new Session('twitter');
   $Twitter = new TwitterVideoUpload($config, $Session);
 
   $logger = new Logger('TwitterVideoUpload');

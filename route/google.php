@@ -19,7 +19,7 @@ use Monolog\Handler\StreamHandler;
  * @method /google/auth
  * @param String appUrl    (Optional) Your app URL. Will be appended with ?accessToken={accessToken}
  */
-$api->get('/google/auth', function (RestApi $api, Request $request) use ($config) {
+$api->get('/{service}/auth', function (RestApi $api, Request $request) use ($config) {
 
   $appUrl      = $request->get('appUrl');
   $redirectUrl = strtok($request->getUri(), '?');
@@ -45,7 +45,7 @@ $api->get('/google/auth', function (RestApi $api, Request $request) use ($config
   ];
 
   return $api->json($resp);
-});
+})->assert('service', 'google|youtube|googleplus|google\+');
 
 /**
  * Upload and share to youtube

@@ -38,8 +38,8 @@ $config = [
     'callback_url' => $scriptUri
   ],
   'facebook' => [
-    'app_id' => '248990911853204',
-	  'app_secret' => 'd6f8aa2d88bfe629a32a2264dcc22872',
+    'app_id' => '552377038443474',
+	  'app_secret' => '3d3a54b33ff57cbadd165e1d5b09697c',
     'default_graph_version' => 'v2.3',
     //'default_access_token' => null, // optional
     'permissions' => [

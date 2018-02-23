@@ -1,0 +1,168 @@
+<?php
+
+namespace TorCDN\Server;
+
+/**
+ * Simple session wrapper
+ * 
+ * Example:
+ * $Session = new Session();
+ * $Session->set('foo', 'bar');
+ * ... next page load ...
+ * $Session->get('foo'); // bar
+ */
+class Session {
+
+	const DEFAULT_SESSION_NS = 'TorCDN';
+	
+	/**
+	 * @var String Session ID
+	 */
+	protected $id;
+
+	/**
+	 * @var String Session namespace
+	 */
+	protected $namespace;
+
+	/**
+	 * @var Array Session data store
+	 */
+	protected $SESSION = [];
+
+	/**
+	 * Construct the session, start if not started
+	 * @param String Namespace
+	 * @param String Session ID
+	 */
+	public function __construct($ns = null, $id = null) {
+		$this->setNamespace($ns ? $ns : self::DEFAULT_SESSION_NS);
+
+		// new session id
+		if ($id && $id != session_id()) {
+			if (session_status() == PHP_SESSION_ACTIVE) {
+				session_commit();
+			}
+			session_id($id);
+		}
+		// fixes session across sub domains
+		$domain = $this->getSecondaryDomain();
+		$this->setCookieDomain('.' . $domain);
+
+		if (session_status() !== PHP_SESSION_ACTIVE) {
+			session_start();
+		}
+
+		$this->SESSION = &$_SESSION[$this->getNamespace()];
+	}
+
+	/**
+	 * Persist the session before process ends
+	 */
+	public function __destruct() {
+		$_SESSION[$this->getNamespace()] = $this->SESSION;
+	}
+
+	/**
+	 * Retrieve a session value
+	 * @param String Namespace
+	 * @param Mixed Default value to return if namespace is not set
+	 */
+	public function get($name, $default = null) {
+		return isset($this->SESSION[$name]) ? $this->SESSION[$name] : $default;
+	}
+
+	/**
+	 * Set a session value
+	 * @param String Namespace
+	 * @param String Value
+	 */
+	public function set($name, $value) {
+		return $this->SESSION[$name] = $value;
+	}
+
+	/**
+	 * Check if a session value has been set
+	 * @param String Namespace
+	 */
+	public function isset($name) {
+		return  isset($this->SESSION[$name]);
+	}
+
+	/**
+	 * Unset a session value
+	 * @param String Namespace
+	 */
+	public function unset($name) {
+		unset($this->SESSION[$name]);
+	}
+
+	/**
+	 * Destroy the session
+	 */
+	public function destroy() {
+		$this->SESSION = [];
+	}
+
+	/**
+	 * Set a namespace to save session data to
+	 * @param String $namespace
+	 * @return void
+	 */
+	public function setNamespace($namespace) {
+		$this->namespace = $namespace;
+	}
+
+	/**
+	 * Get the session namespace
+	 * @return String
+	 */
+	public function getNamespace() {
+		return $this->namespace ?: self::DEFAULT_SESSION_NS;
+	}
+
+	/**
+	 * Get all session keys
+	 */
+	public function getAll() {
+		return $this->SESSION;
+	}
+
+	/**
+	 * Get session Id
+	 */
+	public function getId() {
+		return session_id();
+	}
+
+	/**
+	 * Set the session cookie domain
+	 * @return String Domain eg: .domain.com or domain.com
+	 */
+	public function setCookieDomain($domain) {
+		session_set_cookie_params(360000, '/', $domain);
+		ini_set('session.cookie_domain', $domain);
+	}
+
+	/**
+	 * Get the real session cookie domain
+	 */
+	public function getCookieDomain() {
+		return ini_get('session.cookie_domain');
+	}
+
+	/**
+	 * Retrieve the secondary domain from a full domain
+	 * @return String
+	 */
+	protected function getSecondaryDomain()
+	{
+		$domain = $_SERVER['HTTP_HOST'] ?: $_SERVER['SERVER_NAME'];
+		if (preg_match('/([a-z0-9][a-z0-9\-]{1,63})\.[a-z]{2,6}$/i', $domain, $regs)) {
+			return $regs[0];
+		}
+		return false;
+	}
+	
+	
+}

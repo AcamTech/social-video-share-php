@@ -14,6 +14,12 @@ use Symfony\Component\HttpFoundation\Response;
 ini_set('display_errors', false);
 error_reporting(E_ALL);
 
+// required by facebook sdk
+// see: https://github.com/facebook/php-graph-sdk/blob/master/docs/reference/RedirectLoginHelper.md
+if (!session_id()) {
+  session_start();
+}
+
 $config = require __DIR__ . '/config.php';
 
 $api = new RestApi([
@@ -36,34 +42,12 @@ $api->options("{anything}", function () {
 })->assert("anything", ".*");
 
 // routes
+require_once __DIR__ . '/route/test.php';
+require_once __DIR__ . '/route/account.php';
 require_once __DIR__ . '/route/google.php';
 require_once __DIR__ . '/route/vimeo.php';
 require_once __DIR__ . '/route/twitter.php';
 require_once __DIR__ . '/route/facebook.php';
-
-/**
- * User Info
- * @todo implement
- */
-$api->get('/account', function (RestApi $api) use ($config) {
-  $services = array_keys($config);
-  $accounts = array();
-
-  foreach($services as $service) {
-    $session = new Session($service);
-    $accounts[$service] = $session->getAll();
-  }
-
-  $session = new Session();
-
-  return $api->json(array(
-    'session' => array(
-      'cookieDomain' => $session->getCookieDomain(),
-      'sessionId' => $session->getId()
-    ),
-    'accounts' => $accounts
-  ));
-});
 
 /**
  * Debugging

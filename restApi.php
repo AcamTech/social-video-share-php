@@ -12,13 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 // TODO: remove
 ini_set('display_errors', false);
-error_reporting(E_ALL);
-
-// required by facebook sdk
-// see: https://github.com/facebook/php-graph-sdk/blob/master/docs/reference/RedirectLoginHelper.md
-if (!session_id()) {
-  session_start();
-}
+error_reporting(E_ERROR);
 
 $config = require __DIR__ . '/config.php';
 
@@ -30,7 +24,9 @@ $api = new RestApi([
 
 // cors
 $api->after(function (Request $request, Response $response) {
-  $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : $_SERVER['HTTP_REFERER'];
+  $origin =  isset($_SERVER['HTTP_ORIGIN']) 
+    ? $_SERVER['HTTP_ORIGIN']
+    : (isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '*');
   $response->headers->set('Access-Control-Allow-Origin', $origin);
   $response->headers->set('Access-Control-Allow-Credentials', 'true');
   $response->headers->set('Access-Control-Allow-Headers', '*');
@@ -48,6 +44,7 @@ require_once __DIR__ . '/route/google.php';
 require_once __DIR__ . '/route/vimeo.php';
 require_once __DIR__ . '/route/twitter.php';
 require_once __DIR__ . '/route/facebook.php';
+require_once __DIR__ . '/route/linkedin.php';
 
 /**
  * Debugging

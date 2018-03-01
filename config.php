@@ -45,6 +45,11 @@ $config = [
     'permissions' => [
       'email', 'public_profile', 'publish_actions', 'user_videos'
     ]
+  ],
+  'linkedin' => [
+    'app_id' => '81m0hc9reyo7n5',
+    'app_secret' => 'lxVjZvW1HlS9SfT0',
+    'scope' => ['w_share']
   ]
 ];
 

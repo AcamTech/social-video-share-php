@@ -23,6 +23,7 @@ $api->get('/{service}/auth', function (RestApi $api, Request $request) use ($con
 
   $appUrl      = $request->get('appUrl');
   $redirectUrl = strtok($request->getUri(), '?');
+  $error       = $request->get('error');
 
   $Session     = new Session('google');
   $Client      = new Google_Client();
@@ -31,17 +32,25 @@ $api->get('/{service}/auth', function (RestApi $api, Request $request) use ($con
   $accessToken = $GoogleAuth->getAccessToken();
   $authUrl     = $GoogleAuth->createAuthUrl($redirectUrl);
 
-  if (!$accessToken) {
+  if ($appUrl) {
     $Session->set('appUrl', $appUrl);
   }
-
+  $appUrl = $Session->get('appUrl');
+  
   if ($request->get('code')) {
-    return $api->redirect($Session->get('appUrl') ?: $redirectUrl);
+    return $api->redirect($appUrl ?: $redirectUrl);
+  }
+
+  if ($error && $appUrl) {
+    $sep = (strpos($appUrl, '?') === false) ? '?' : '&';
+    $params = http_build_query(array('error' => $error));
+    return $api->redirect($appUrl . $sep . $params);
   }
 
   $resp = [
     'accessToken' => $accessToken,
-    'authUrl' => $authUrl
+    'authUrl'     => $authUrl,
+    'appUrl'      => $appUrl
   ];
 
   return $api->json($resp);

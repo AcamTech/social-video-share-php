@@ -24,6 +24,7 @@ $api->get('/facebook/auth', function (RestApi $api, Request $request) use ($conf
 
   $returnUri  = strtok($request->getUri(), '?');
   $appUrl     = $request->get('appUrl');
+  $error      = $request->get('error');
   $authUrl    = null;
 
   $Session = new Session('facebook');
@@ -37,6 +38,9 @@ $api->get('/facebook/auth', function (RestApi $api, Request $request) use ($conf
 
   if (!$accessToken) {
     $authUrl = $Facebook->createAuthUrl($returnUri);
+  }
+
+  if ($appUrl) {
     $Session->set('appUrl', $appUrl);
   }
 
@@ -46,6 +50,12 @@ $api->get('/facebook/auth', function (RestApi $api, Request $request) use ($conf
   $appUrl = $Session->get('appUrl');
   if ($request->get('code')) {
     return $api->redirect($appUrl ? $appUrl : $returnUri);
+  }
+
+  if ($error && $appUrl) {
+    $sep = (strpos($appUrl, '?') === false) ? '?' : '&';
+    $params = http_build_query(array('error' => $error));
+    return $api->redirect($appUrl . $sep . $params);
   }
 
   $resp = [

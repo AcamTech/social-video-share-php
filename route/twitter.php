@@ -22,18 +22,30 @@ use Monolog\Handler\StreamHandler;
  */
 $api->get('/twitter/auth', function (RestApi $api, Request $request) use ($config) {
 
-  $appUrl = $request->get('appUrl');
-  $returnUri = strtok($request->getUri(), '?');
+  $appUrl       = $request->get('appUrl');
+  $returnUri    = strtok($request->getUri(), '?');
+  $error        = $request->get('error');
+  $denied       = $request->get('denied');
 
-  $Session = new Session('twitter');
-  $Twitter = twitterVideoUploadFactory($config['twitter'], $Session);
+  $Session      = new Session('twitter');
+  $Twitter      = twitterVideoUploadFactory($config['twitter'], $Session);
 
-  $token = $Twitter->getOAuthToken($Session->get('appUrl'));
-  $accessToken = $token['oauth_token'];
-  $authUrl = $Twitter->createAuthUrl($returnUri);
+  $token        = $Twitter->getOAuthToken($Session->get('appUrl'));
+  $accessToken  = $token['oauth_token'];
+  $authUrl      = $Twitter->createAuthUrl($returnUri);
 
   if ($appUrl) {
     $Session->set('appUrl', $appUrl);
+  }
+  $appUrl = $Session->get('appUrl');
+
+  if ( ($denied || $error) && $appUrl) {
+    $sep = (strpos($appUrl, '?') === false) ? '?' : '&';
+    $params = http_build_query(array(
+      'error' => $error, 
+      'denied' => $denied
+    ));
+    return $api->redirect($appUrl . $sep . $params);
   }
 
   $resp = [

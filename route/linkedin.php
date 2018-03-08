@@ -110,6 +110,7 @@ $api->get('/linkedin/share', function (RestApi $api, Request $request) use ($con
   $title          = $request->get('title') ?: $autoTitle;
   $description    = $request->get('description');
   $privacyStatus  = $request->get('privacyStatus') ?: 'anyone';
+  $thumbnail      = $request->get('thumbnail');
   
   $logger = new Logger('LinkedinVideoUpload');
   $logger->pushHandler(new StreamHandler('log/linkedin.log', Logger::DEBUG));
@@ -135,7 +136,11 @@ $api->get('/linkedin/share', function (RestApi $api, Request $request) use ($con
 
   $options = array('json'=>
     array(
-      'comment' => ($description ?: $title) . ' ' . $url,
+      'content' => array(
+        'submitted-url' => $url,
+        'submitted-image-url' => $thumbnail
+      ),
+      'comment' => ($description ?: $title),
       'visibility' => array(
         'code' => $privacyStatus
       )

@@ -37,6 +37,21 @@ $api->options("{anything}", function () {
   return new \Symfony\Component\HttpFoundation\JsonResponse(null, 204);
 })->assert("anything", ".*");
 
+// middleware
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
+$api->after(function (Request $request, Response $response) {
+  $logger = new Logger('middleware');
+  $logger->pushHandler(new StreamHandler('log/middleware.log', Logger::DEBUG));
+
+  $route  = $request->getPathInfo();
+
+  if (preg_match("|^/([a-z0-9]+)/auth$|i", $route)) {
+    //throw new \Exception(print_r($response, true));
+  }
+
+});
+
 // routes
 require_once __DIR__ . '/route/test.php';
 require_once __DIR__ . '/route/account.php';

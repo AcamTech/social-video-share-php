@@ -8,6 +8,8 @@ use TorCDN\Server\Session;
 use TorCDN\Server\Request;
 use TorCDN\SocialVideoShare\Exception;
 
+new Exception(); // load exceptions
+
 /**
  * OAuth and Video Upload to Twitter API
  * TODO: Separate magic API methods to own class

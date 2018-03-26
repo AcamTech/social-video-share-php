@@ -136,8 +136,7 @@ class Session {
 	 * @return String Domain eg: .domain.com or domain.com
 	 */
 	public function setCookieDomain($domain) {
-		session_set_cookie_params(360000, '/', $domain);
-		ini_set('session.cookie_domain', $domain);
+		session_set_cookie_params(60*60*24*7, '/', $domain);
 	}
 
 	/**

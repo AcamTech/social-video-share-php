@@ -52,6 +52,11 @@ class GoogleAuth
 		$this->Session->unset('google_access_token');
 	}
 
+	/**
+	 * Get an access token or refresh expired token
+	 *
+	 * @return 
+	 */
 	public function getAccessToken() {
 		$Request = $this->Request;
 		$Session = $this->Session;
@@ -64,6 +69,8 @@ class GoogleAuth
 		if ($accessToken && $oldScope == $scope) {
 			$client->setAccessToken($accessToken);
 			if ($client->isAccessTokenExpired()) {
+				$client->refreshTokenWithAssertion();
+				/*
 				$refreshToken = $client->getRefreshToken(); // TODO: why is this failing?
 				if ($refreshToken) {
 					$fetchSuccess = $client->fetchAccessTokenWithRefreshToken($refreshToken);
@@ -73,12 +80,14 @@ class GoogleAuth
 				} else {
 					$accessToken = [];
 				}
+				*/
 			}
 		} else {
 			$accessToken = null;
 			$authCode = $Request->get('code');
 			if ($authCode) {
-				$accessToken = $client->fetchAccessTokenWithAuthCode($authCode);
+				$client->authenticate($authCode);
+				$accessToken = $client->getAccessToken();
 				if ($accessToken) {
 					$client->setAccessToken($accessToken);
 				}
